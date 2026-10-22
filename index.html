@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0f172a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Tacógrafo">
+<title>Tacógrafo V2 — GPS & Velocidade</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
+<style>
+  :root{
+    --c-drive:#f59e0b; --c-work:#3b82f6; --c-avail:#94a3b8; --c-rest:#22c55e;
+    --c-drive-bg:rgba(245,158,11,.15); --c-work-bg:rgba(59,130,246,.15);
+    --c-avail-bg:rgba(148,163,184,.15); --c-rest-bg:rgba(34,197,94,.15);
+    --bg:#0b1220; --surface:#111c30; --surface-2:#0f172a; --text:#e2e8f0; --muted:#94a3b8;
+    --border:#1e293b; --danger:#dc2626; --danger-bg:#3f1616; --success:#16a34a;
+    --radius:14px; --shadow:0 1px 3px rgba(0,0,0,.4);
+    --font-ui:'Barlow',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+    --font-num:'Barlow Condensed','Barlow',system-ui,sans-serif;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:var(--font-ui); background:var(--bg); color:var(--text);
+    min-height:100vh; min-height:100dvh;
+    padding: calc(env(safe-area-inset-top) + 0px) 0 calc(env(safe-area-inset-bottom) + 64px) 0;
+    font-size:15px; line-height:1.35; -webkit-font-smoothing:antialiased;
+    overscroll-behavior-y:contain; transition: background 0.3s ease;
+  }
+
+  /* EFEITOS LUMINOSOS DE ALERTA NO ECRÃ INTEIRO */
+  body.flash-red {
+    animation: flashRed 0.6s infinite alternate;
+  }
+  body.flash-yellow {
+    animation: flashYellow 1s infinite alternate;
+  }
+
+  @keyframes flashRed {
+    0% { background-color: var(--bg); }
+    100% { background-color: #880808; }
+  }
+  @keyframes flashYellow {
+    0% { background-color: var(--bg); }
+    100% { background-color: #7a5c00; }
+  }
+
+  .num{font-family:var(--font-num);font-variant-numeric:tabular-nums;letter-spacing:.5px;}
+  button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit;}
+  input, select{
+    font-family:var(--font-ui); font-size:16px; color:var(--text);
+    background:var(--surface-2); border:1.5px solid var(--border); border-radius:10px;
+    padding:11px 12px; width:100%; min-height:44px;
+  }
+
+  /* Banner alerta */
+  #alertBanner{
+    position:fixed; top:0; left:0; right:0; z-index:100;
+    background:var(--danger); color:#fff; padding: calc(env(safe-area-inset-top) + 10px) 14px 12px;
+    display:none; align-items:center; gap:10px; box-shadow:0 4px 16px rgba(0,0,0,.5);
+    font-weight:700;
+  }
+  #alertBanner.show{display:flex;}
+  #alertBanner.yellow{background:#d97706;}
+  #alertBanner .msg{flex:1;font-size:14px;}
+  #alertBanner button{
+    background:#fff;color:#000;font-weight:700;border-radius:10px;
+    padding:8px 14px;min-height:38px;font-size:14px;
+  }
+
+  .app{max-width:480px;margin:0 auto;padding:0 12px;}
+
+  /* Relógio topo & Velocímetro GPS */
+  .clockbar{text-align:center;padding:14px 0 8px;}
+  .clockbar .time{font-family:var(--font-num);font-size:44px;font-weight:700;line-height:1;}
+  .clockbar .date{color:var(--muted);font-size:13px;margin-top:4px;}
+
+  .speedometer-card {
+    background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border);
+    padding: 12px; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between;
+  }
+  .speed-val { font-family: var(--font-num); font-size: 36px; font-weight: 700; color: #38bdf8; }
+  .speed-unit { font-size: 12px; color: var(--muted); text-transform: uppercase; }
+  .speed-status { font-size: 12px; font-weight: 600; padding: 4px 8px; border-radius: 6px; background: var(--surface-2); }
+
+  .card{
+    background:var(--surface); border-radius:var(--radius); box-shadow:var(--shadow);
+    padding:14px; margin-bottom:12px; border:1px solid var(--border);
+  }
+  .card h2{font-size:12px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin:0 0 10px;font-weight:600;}
+
+  .metric-big{font-family:var(--font-num);font-size:38px;font-weight:700;line-height:1;}
+  .metric-sub{color:var(--muted);font-size:13px;margin-top:4px;}
+  .bar{height:10px;border-radius:6px;background:var(--surface-2);position:relative;margin-top:10px;overflow:visible;border:1px solid var(--border);}
+  .bar .fill{position:absolute;left:0;top:0;bottom:0;border-radius:6px;transition:width .4s;}
+  .bar .fill.drive{background:var(--c-drive);}
+  .bar .marker{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--danger);}
+
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;}
+  .stat{background:var(--surface-2);border-radius:10px;padding:10px;}
+  .stat .v{font-family:var(--font-num);font-size:24px;font-weight:700;}
+  .stat .k{font-size:11px;color:var(--muted);text-transform:uppercase;}
+
+  /* Atividades */
+  .activities{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .act{
+    display:flex;align-items:center;gap:10px;padding:12px;min-height:54px;
+    border-radius:12px;border:2px solid var(--border);background:var(--surface-2);
+    font-weight:600;font-size:14px;transition:transform .08s,background .2s;text-align:left;
+  }
+  .act[data-key="D"]{color:var(--c-drive);}
+  .act[data-key="T"],.act[data-key="L"]{color:var(--c-work);}
+  .act[data-key="A"]{color:var(--c-avail);}
+  .act[data-key="R"],.act[data-key="C"],.act[data-key="F"]{color:var(--c-rest);}
+  .act.active{background:var(--surface);border-width:2.5px;}
+  .act.active[data-key="D"]{border-color:var(--c-drive);background:var(--c-drive-bg);}
+  .act.active[data-key="T"],.act.active[data-key="L"]{border-color:var(--c-work);background:var(--c-work-bg);}
+  .act.active[data-key="R"],.act.active[data-key="C"],.act.active[data-key="F"]{border-color:var(--c-rest);background:var(--c-rest-bg);}
+
+  .btn{
+    display:flex;align-items:center;justify-content:center;gap:8px;width:100%;
+    min-height:48px;border-radius:12px;font-weight:700;font-size:15px;
+    background:var(--c-work);color:#fff;
+  }
+  .btn.danger{background:var(--danger);}
+
+  /* Bottom nav */
+  .bottomnav{
+    position:fixed;bottom:0;left:0;right:0;z-index:50;
+    background:var(--surface);border-top:1px solid var(--border);
+    display:grid;grid-template-columns:repeat(4,1fr);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .bottomnav button{
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+    min-height:54px;font-size:11px;color:var(--muted);font-weight:600;
+  }
+  .bottomnav button.active{color:var(--c-work);}
+
+  .tab{display:none;}
+  .tab.active{display:block;}
+  .start-screen{max-width:480px;margin:0 auto;padding:24px 16px;}
+  .toast{
+    position:fixed;bottom:70px;left:50%;transform:translateX(-50%);
+    background:#e2e8f0;color:#0f172a;padding:10px 18px;border-radius:24px;font-size:13px;
+    font-weight:600;opacity:0;pointer-events:none;transition:opacity .25s;z-index:200;
+  }
+  .toast.show{opacity:1;}
+  .hidden{display:none !important;}
+</style>
+</head>
+<body>
+
+<div id="alertBanner" role="alert">
+  <span class="msg" id="alertMsg">Alerta</span>
+  <button id="alertOk">OK / Silenciar</button>
+</div>
+
+<!-- ECRÃ INICIAL -->
+<div id="startScreen" class="start-screen">
+  <h1 style="text-align:center;font-family:var(--font-num);font-size:36px;margin-bottom:4px;">Tacógrafo GPS</h1>
+  <p style="text-align:center;color:var(--muted);font-size:13px;margin-bottom:20px;">Com Deteção Automática & Alerta 90km/h</p>
+  <div class="card">
+    <div style="margin-bottom:10px;">
+      <label style="font-size:12px;color:var(--muted);">Matrícula do Veículo</label>
+      <input type="text" id="sPlate" placeholder="AA-00-AA" autocapitalize="characters">
+    </div>
+    <div style="margin-bottom:14px;">
+      <label style="font-size:12px;color:var(--muted);">ODO Início (km)</label>
+      <input type="number" id="sOdo" placeholder="0">
+    </div>
+    <button class="btn" id="btnStart">Iniciar Jornada</button>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app" class="hidden">
+  <div class="app">
+    <div class="clockbar">
+      <div class="time num" id="clockTime">00:00:00</div>
+      <div class="date" id="clockDate"></div>
+    </div>
+
+    <!-- PAINEL GPS DE VELOCIDADE -->
+    <div class="speedometer-card">
+      <div>
+        <div class="speed-val num" id="gpsSpeed">0</div>
+        <div class="speed-unit">km/h (GPS)</div>
+      </div>
+      <div style="text-align:right;">
+        <div class="speed-status" id="gpsStatus">GPS: A ligar...</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px;" id="speedInfractions">Excesso: 0s</div>
+      </div>
+    </div>
+
+    <!-- TAB HOJE -->
+    <div class="tab active" id="tab-hoje">
+      <div class="card">
+        <h2>Condução Contínua (Decrescente)</h2>
+        <div class="metric-big num" id="contTimer">4:30:00</div>
+        <div class="metric-sub" id="contSub">Tempo efetuado: 0h00</div>
+        <div class="bar-wrap">
+          <div class="bar">
+            <div class="fill drive" id="contFill" style="width:0%"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Condução Diária (Decrescente)</h2>
+        <div class="metric-big num" id="dailyTimer">9h00</div>
+        <div class="metric-sub" id="dailySub">Condução efetuada: 0h00</div>
+        <div class="grid2">
+          <div class="stat">
+            <div class="v num" id="workTotal">0h00</div>
+            <div class="k">Trabalho Total</div>
+          </div>
+          <div class="stat">
+            <div class="v num" id="overspeedCount">0</div>
+            <div class="k">Infrações >90km/h</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Atividade Atual (GPS Automático)</h2>
+        <div class="activities" id="activityGrid"></div>
+      </div>
+
+      <div class="card">
+        <button class="btn danger" id="btnEndDay">Terminar Jornada</button>
+      </div>
+    </div>
+
+    <!-- TAB HISTÓRICO -->
+    <div class="tab" id="tab-historico">
+      <h2 style="font-size:14px;color:var(--muted);margin:10px 0;">Histórico de Jornadas & Infrações</h2>
+      <div id="historyList"></div>
+    </div>
+
+    <!-- TAB ALERTAS -->
+    <div class="tab" id="tab-alertas">
+      <div class="card">
+        <h2>Configuração de Alertas</h2>
+        <p style="font-size:13px;color:var(--muted);">
+          • <strong>Excesso >90 km/h:</strong> Ecrã pisca em <strong>VERMELHO</strong> + Alarme sonoro contínuo.<br>
+          • <strong>Fim de Condução (15 min antes):</strong> Ecrã pisca em <strong>AMARELO</strong>.<br>
+          • <strong>Deteção Automática:</strong> Altera para Condução a partir dos 8 km/h e para Pausa após 3 min parado.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <nav class="bottomnav">
+    <button data-tab="hoje" class="active">Hoje</button>
+    <button data-tab="historico">Histórico</button>
+    <button data-tab="alertas">Alertas/GPS</button>
+  </nav>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+"use strict";
+
+const STORAGE_KEY = "tacho_v2_gps";
+const MIN = 60*1000;
+const LIM_CONT = 270*MIN;   // 4h30
+const LIM_DAILY = 540*MIN;  // 9h
+
+let state = loadState();
+let audioCtx = null;
+let currentSpeed = 0;
+let overspeedSeconds = 0;
+let overspeedTimer = null;
+let autoPauseTimer = null;
+
+function loadState(){
+  try{ return JSON.parse(localStorage.getItem(STORAGE_KEY)) || defaultState(); }
+  catch(e){ return defaultState(); }
+}
+function defaultState(){
+  return { current: null, history: [] };
+}
+function saveState(){
+  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }catch(e){}
+}
+
+function toast(m){
+  const el = document.getElementById("toast");
+  el.textContent = m; el.classList.add("show");
+  setTimeout(()=>el.classList.remove("show"), 2200);
+}
+
+/* ================= AUDIOWEB & ALARMES ================= */
+function unlockAudio(){
+  if(!audioCtx){
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if(AC) audioCtx = new AC();
+  }
+  if(audioCtx && audioCtx.state === "suspended") audioCtx.resume();
+}
+
+function playBeep(freq, dur, type="sine"){
+  unlockAudio(); if(!audioCtx) return;
+  try{
+    const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+    o.type = type; o.frequency.value = freq;
+    g.gain.setValueAtTime(0.3, audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur/1000);
+    o.connect(g); g.connect(audioCtx.destination);
+    o.start(); o.stop(audioCtx.currentTime + dur/1000);
+  }catch(e){}
+}
+
+/* ================= GPS & DETEÇÃO DE VELOCIDADE ================= */
+function initGPS(){
+  if("geolocation" in navigator){
+    navigator.geolocation.watchPosition(
+      (pos) => {
+        const speedKmh = pos.coords.speed ? Math.round(pos.coords.speed * 3.6) : 0;
+        updateSpeed(speedKmh);
+        document.getElementById("gpsStatus").textContent = "GPS: Ativo";
+        document.getElementById("gpsStatus").style.color = "#22c55e";
+      },
+      (err) => {
+        document.getElementById("gpsStatus").textContent = "GPS: Sem Sinal";
+        document.getElementById("gpsStatus").style.color = "#dc2626";
+      },
+      { enableHighAccuracy: true, maximumAge: 1000, timeout: 5000 }
+    );
+  }
+}
+
+function updateSpeed(speed){
+  currentSpeed = speed;
+  document.getElementById("gpsSpeed").textContent = speed;
+
+  if(!state.current) return;
+
+  // 1. DETEÇÃO AUTOMÁTICA DE CONDUÇÃO ( > 8 km/h )
+  if(speed >= 8){
+    clearTimeout(autoPauseTimer);
+    autoPauseTimer = null;
+    const currentAct = getCurrentActivity();
+    if(currentAct !== "D"){
+      setActivity("D");
+      toast("GPS: Condução iniciada automaticamente!");
+    }
+  } 
+  // 2. DETEÇÃO AUTOMÁTICA DE PARAGEM ( 0 km/h por 3 min )
+  else if(speed < 3 && getCurrentActivity() === "D"){
+    if(!autoPauseTimer){
+      autoPauseTimer = setTimeout(() => {
+        setActivity("R");
+        toast("GPS: Veículo parado — Alterado para Pausa/Repouso");
+      }, 3 * 60 * 1000);
+    }
+  }
+
+  // 3. ALERTA DE EXCESSO DE VELOCIDADE ( > 90 km/h )
+  if(speed > 90){
+    document.body.classList.add("flash-red");
+    playBeep(900, 200, "square");
+    
+    if(!overspeedTimer){
+      overspeedTimer = setInterval(() => {
+        overspeedSeconds++;
+        if(state.current){
+          state.current.overspeedSecs = (state.current.overspeedSecs || 0) + 1;
+          saveState();
+        }
+        document.getElementById("speedInfractions").textContent = `Excesso: ${state.current ? state.current.overspeedSecs : 0}s`;
+      }, 1000);
+    }
+  } else {
+    document.body.classList.remove("flash-red");
+    clearInterval(overspeedTimer);
+    overspeedTimer = null;
+  }
+}
+
+/* ================= LÓGICA E CÁLCULOS DA JORNADA ================= */
+function getCurrentActivity(){
+  if(!state.current || !state.current.segs.length) return null;
+  return state.current.segs[state.current.segs.length - 1][0];
+}
+
+function setActivity(key){
+  if(!state.current) return;
+  const segs = state.current.segs;
+  const now = Date.now();
+  if(segs.length && segs[segs.length-1][0] === key && segs[segs.length-1][2] == null) return;
+  if(segs.length && segs[segs.length-1][2] == null) segs[segs.length-1][2] = now;
+  segs.push([key, now, null]);
+  saveState();
+  renderAll();
+}
+
+function calc(segs, now){
+  now = now || Date.now();
+  let driveMs = 0, workMs = 0;
+  for(const s of segs){
+    const key = s[0], st = s[1], en = s[2] || now;
+    const dur = Math.max(0, en - st);
+    if(key === "D") driveMs += dur;
+    if(key === "D" || key === "T" || key === "L") workMs += dur;
+  }
+  return { driveMs, workMs };
+}
+
+function fmtHMS(ms){
+  if(ms < 0) ms = 0;
+  const t = Math.floor(ms/1000);
+  return `${Math.floor(t/3600)}:${String(Math.floor((t%3600)/60)).padStart(2,"0")}:${String(t%60).padStart(2,"0")}`;
+}
+function fmtHM(ms){
+  if(ms < 0) ms = 0;
+  const t = Math.floor(ms/1000);
+  return `${Math.floor(t/3600)}h${String(Math.floor((t%3600)/60)).padStart(2,"0")}`;
+}
+
+function renderAll(){
+  if(!state.current) return;
+  const now = Date.now();
+  const c = calc(state.current.segs, now);
+
+  // Condução Contínua Decrescente
+  const contRemain = LIM_CONT - c.driveMs;
+  document.getElementById("contTimer").textContent = fmtHMS(contRemain);
+  document.getElementById("contSub").textContent = `Condução efetuada: ${fmtHM(c.driveMs)}`;
+
+  // Condução Diária Decrescente
+  const dailyRemain = LIM_DAILY - c.driveMs;
+  document.getElementById("dailyTimer").textContent = fmtHM(dailyRemain);
+  document.getElementById("dailySub").textContent = `Condução efetuada: ${fmtHM(c.driveMs)}`;
+  document.getElementById("workTotal").textContent = fmtHM(c.workMs);
+  document.getElementById("overspeedCount").textContent = `${state.current.overspeedSecs || 0}s`;
+
+  // ALERTA LUMINOSO AMARELO (Quando restarem menos de 15 min de condução)
+  if(getCurrentActivity() === "D" && (contRemain <= 15*MIN || dailyRemain <= 15*MIN) && currentSpeed <= 90){
+    document.body.classList.add("flash-yellow");
+  } else if(currentSpeed <= 90) {
+    document.body.classList.remove("flash-yellow");
+  }
+}
+
+/* ================= INICIALIZAÇÃO ================= */
+document.getElementById("btnStart").addEventListener("click", ()=>{
+  unlockAudio();
+  state.current = {
+    start: Date.now(),
+    plate: (document.getElementById("sPlate").value || "S/MATRICULA").toUpperCase(),
+    odoStart: document.getElementById("sOdo").value || 0,
+    segs: [["T", Date.now(), null]],
+    overspeedSecs: 0
+  };
+  saveState();
+  document.getElementById("startScreen").classList.add("hidden");
+  document.getElementById("app").classList.remove("hidden");
+  initGPS();
+  renderAll();
+});
+
+document.getElementById("btnEndDay").addEventListener("click", ()=>{
+  if(!confirm("Deseja terminar a jornada e guardar no histórico?")) return;
+  state.history.push(state.current);
+  state.current = null;
+  saveState();
+  location.reload();
+});
+
+setInterval(()=>{
+  if(state.current) renderAll();
+  const d = new Date();
+  document.getElementById("clockTime").textContent = d.toLocaleTimeString("pt-PT");
+  document.getElementById("clockDate").textContent = d.toLocaleDateString("pt-PT", {weekday:"long", day:"numeric", month:"long"});
+}, 1000);
+
+if(state.current){
+  document.getElementById("startScreen").classList.add("hidden");
+  document.getElementById("app").classList.remove("hidden");
+  initGPS();
+}
+
+})();
+</script>
+</body>
+</html>
