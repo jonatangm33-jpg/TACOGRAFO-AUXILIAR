@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="pt-PT"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b1220">
+<title>Tacógrafo V3</title>
+<meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Tacógrafo"><link rel="apple-touch-icon" href="icon.png"><link rel="icon" href="icon.png">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+:root{--D:#f59e0b;--T:#3b82f6;--A:#94a3b8;--R:#22c55e;--W:#eab308;--bg:#0b1220;--sf:#111c30;--s2:#0f172a;--tx:#e2e8f0;--mu:#94a3b8;--bd:#1e293b;--er:#dc2626;color-scheme:dark;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;overflow:hidden}
+body{background:var(--bg);color:var(--tx);font:14px/1.35 Barlow,system-ui,sans-serif;padding:4px 10px 0;-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);background:var(--bg);z-index:30}
+body.flash-yellow{animation:fy 1s infinite alternate}body.flash-red{animation:fr .6s infinite alternate}
+@keyframes fy{to{background-color:#78350f}}@keyframes fr{to{background-color:#7f1d1d}}
+.n{font-family:"Barlow Condensed",Barlow,sans-serif;font-variant-numeric:tabular-nums;font-weight:700}
+.hid{display:none!important}
+.card{background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:8px 10px}
+.top{display:flex;justify-content:space-between;align-items:center}
+.top .n{font-size:24px;line-height:1}.mu{color:var(--mu);font-size:11px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:6px 0}
+.g2 .card{text-align:center}.g2 h2{margin:0;font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--mu);font-weight:600}
+.big{font-size:32px;line-height:1.05;color:var(--D)}
+.veh{display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:6px;margin:6px 0}.veh label{font-size:10px;color:var(--mu);text-transform:uppercase}
+input{width:100%;background:var(--s2);border:1px solid var(--bd);color:#fff;border-radius:8px;padding:8px;font:inherit;font-size:16px}
+input:focus-visible,button:focus-visible{outline:3px solid var(--T);outline-offset:1px}
+.acts{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:6px 0}
+.act{background:var(--s2);border:1.5px solid var(--bd);border-radius:10px;padding:6px 2px;display:flex;flex-direction:column;align-items:center;gap:2px;min-height:54px;color:var(--c,var(--tx));font:inherit;cursor:pointer}
+.act svg{width:22px;height:22px}.act span{font-size:10px;font-weight:600;white-space:nowrap;color:var(--tx)}
+.act[data-b=D]{--c:var(--D)}.act[data-b=T]{--c:var(--T)}.act[data-b=A]{--c:var(--A)}.act[data-b=R]{--c:var(--R)}.act[data-b=W]{--c:var(--W)}
+.act.on{border-color:var(--c);background:color-mix(in srgb,var(--c) 18%,var(--sf));border-width:2px}
+.st{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:6px 0;text-align:center}
+.st .card{padding:6px}.st .n{font-size:18px}.st .mu{font-size:9px;text-transform:uppercase}
+.btn{border:0;border-radius:10px;background:var(--T);color:#fff;font:inherit;font-weight:700;font-size:14px;min-height:44px;padding:0 10px;cursor:pointer;width:100%}
+.btn.er{background:var(--er)}.btn.wa{background:#d97706}.btn.gh{background:var(--s2);border:1px solid var(--bd)}
+.acn{display:grid;grid-template-columns:2fr 1fr;gap:6px}
+.views{flex:1;min-height:0;position:relative}
+.tab{display:none;height:100%;overflow-y:auto;padding:4px 0 70px}.tab.on{display:block}
+#app{display:flex;flex-direction:column;height:100%}
+.nav{position:fixed;left:0;right:0;bottom:0;background:var(--sf);border-top:1px solid var(--bd);display:grid;grid-template-columns:repeat(3,1fr);padding-bottom:env(safe-area-inset-bottom,0px);z-index:20}
+.nav button{border:0;background:none;color:var(--mu);font:inherit;font-weight:600;font-size:12px;min-height:50px}.nav .on{color:var(--T);box-shadow:inset 0 2px 0 var(--T)}
+.ban{position:fixed;left:8px;right:8px;top:calc(env(safe-area-inset-top,0px) + 6px);z-index:40;background:var(--er);border-radius:12px;padding:12px;display:none;gap:10px;align-items:center;justify-content:space-between}
+.ban.show{display:flex}.ban button{background:#fff;color:var(--er);border:0;border-radius:8px;font-weight:700;padding:10px 16px}
+.toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 64px);transform:translateX(-50%);background:#fff;color:#111;padding:8px 14px;border-radius:20px;font-weight:600;opacity:0;pointer-events:none;transition:.2s;z-index:50}.toast.show{opacity:1}
+.seg{display:flex;gap:6px;margin:6px 0}.seg button{flex:1;border:1px solid var(--bd);background:var(--sf);color:var(--tx);border-radius:10px;font:inherit;font-weight:600;min-height:40px}.seg .on{background:var(--tx);color:var(--bg)}
+.day{display:flex;justify-content:space-between;gap:8px;padding:7px 0;border-top:1px solid var(--bd);font-size:14px}.day button{border:1px solid var(--bd);background:none;color:#f87171;border-radius:8px;min-height:30px;padding:0 10px;font:inherit}
+.wkh{font-weight:700;margin:0 0 4px;font-size:14px}.sc{max-width:480px;margin:18px auto 0}
+label{display:block;margin:8px 0 3px}
+.flash{position:fixed;inset:0;z-index:35;pointer-events:none;opacity:0}.flash.f1{background:#facc15;animation:pf 1.1s ease-in-out infinite;--m:.34}.flash.f2{background:#ef4444;animation:pf .65s ease-in-out infinite;--m:.4}@keyframes pf{0%,100%{opacity:0}50%{opacity:var(--m)}}.ban{font-size:18px;font-weight:700}.ban.a1{background:#facc15;color:#1b1300}.ban.a1 button{background:#1b1300;color:#fff}
+</style></head><body>
+<div class="ban" id="ban"><span id="bmsg"></span><button id="bok">OK</button></div>
+<div class="toast" id="toast"></div><div class="flash" id="flash"></div>
+
+<div id="startScreen" class="sc">
+ <h1 class="n" style="text-align:center;font-size:34px;margin:0 0 2px">Tacógrafo V3</h1>
+ <p class="mu" style="text-align:center;margin:0 0 14px">Apoio ao tacógrafo · não substitui o registo oficial</p>
+ <div class="card" style="padding:14px">
+  <label for="sT" class="mu">Hora de início</label><input type="time" id="sT">
+  <label for="sP" class="mu">Matrícula do camião</label><input type="text" id="sP" autocapitalize="characters" placeholder="00-AA-00">
+  <label for="sO" class="mu">ODO início (km)</label><input type="number" id="sO" inputmode="numeric">
+  <div style="height:12px"></div><button class="btn" id="go">Iniciar jornada</button>
+ </div>
+</div>
+
+<div id="app" class="hid">
+ <div class="card top"><div><div class="n" id="clockTime">00:00:00</div><div class="mu" id="clockDate"></div></div>
+  <div style="text-align:right"><div class="n" style="color:#38bdf8"><span id="gpsSpeed">0</span> <span style="font-size:12px">km/h</span></div><div class="mu" id="gpsStatus">GPS a iniciar…</div></div></div>
+ <div class="views">
+ <section class="tab on" id="t-hoje">
+  <div class="g2">
+   <div class="card"><h2>Condução contínua</h2><div class="n big" id="contTimer">4:30:00</div><div class="mu" id="contSub"></div></div>
+   <div class="card"><h2>Condução diária</h2><div class="n big" id="dailyTimer">9h00</div><div class="mu" id="dailySub"></div></div>
+  </div>
+  <div class="veh"><div><label for="lp">Matrícula</label><input type="text" id="lp" autocapitalize="characters"></div><div><label for="lo1">ODO início</label><input type="number" id="lo1" inputmode="numeric"></div><div><label for="lo2">ODO fim</label><input type="number" id="lo2" inputmode="numeric"></div></div>
+  <div class="mu" style="text-transform:uppercase;font-weight:600">Atividade atual</div>
+  <div class="acts" id="acts"></div>
+  <div class="card hid" id="artBox"><input id="artT" placeholder="Justificação do Art. 12.º (ex.: procura de parque seguro)"><div style="height:6px"></div><button class="btn" id="artS">Registar exceção</button></div>
+  <div class="st"><div class="card"><div class="n" id="workTotal">0h00</div><div class="mu">Trabalho</div></div><div class="card"><div class="n" id="weekDrive">0h00</div><div class="mu">Semana /56h</div></div><div class="card"><div class="n" id="speedOver">0s</div><div class="mu">&gt;90 km/h</div></div></div>
+  <div class="acn"><button class="btn er" id="stop">Terminar jornada</button><button class="btn wa" id="drv">Condutor 1</button></div>
+ </section>
+ <section class="tab" id="t-hist">
+  <div class="card"><div class="mu">Relatório em PDF</div>
+   <label for="rn" class="mu" style="margin-top:2px">Nome do condutor</label><input type="text" id="rn">
+   <div class="seg" id="per"><button data-p="1">24 h</button><button data-p="7" class="on">Semana</button><button data-p="14">2 semanas</button></div>
+   <div id="rprev" class="mu" style="margin-bottom:8px"></div><button class="btn" id="pdf">Gerar PDF</button><div class="mu" id="rmsg" style="margin-top:6px"></div></div>
+  <div id="hist"></div>
+ </section>
+ <section class="tab" id="t-cfg">
+  <div class="card"><label for="a1" class="mu" style="margin-top:0">Alerta 1 – condução contínua (minutos)</label><input type="number" id="a1" inputmode="numeric">
+   <label for="a2" class="mu">Alerta 2 – condução diária (minutos)</label><input type="number" id="a2" inputmode="numeric">
+   <div class="acn" style="margin-top:10px;grid-template-columns:1fr 1fr"><button class="btn gh" id="t1">Testar alerta 1</button><button class="btn gh" id="t2">Testar alerta 2</button></div></div>
+  <div class="card mu" style="margin-top:8px;font-size:13px">Predefinição: 4h10 (250 min) e 8h30 (510 min). O alerta 1 pisca em amarelo e o alerta 2 em vermelho, com som alto e repetido até tocares em OK. Ecrã vermelho: velocidade acima de 90 km/h. Ecrã amarelo: menos de 15 min de condução contínua. A velocidade vem do GPS e a atividade muda para Condução acima de 8 km/h (exceto em Ferry). Mantém o ecrã ligado e o volume alto: o navegador pode não tocar o alerta com o ecrã bloqueado.</div>
+ </section>
+ </div>
+ <nav class="nav" id="nav"><button data-t="hoje" class="on">Hoje</button><button data-t="hist">Histórico</button><button data-t="cfg">Alertas</button></nav>
+</div>
+
+<script>
+"use strict";
+const $=id=>document.getElementById(id),M=6e4,KEY='tacho:v3',BASE={D:'D',T:'T',L:'T',A:'A',R:'R',C:'R',F:'R'};
+const NAME={D:'Condução',T:'Trabalho',L:'Carga',A:'Disponíb.',R:'Pausa',C:'Cama',F:'Ferry'};
+const ic=p=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${p}</svg>`;
+const ICON={D:ic('<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2.3"/><path d="M3.5 10.5c5 1.2 12 1.2 17 0M12 14.3V21"/>'),T:ic('<path d="M5 6l14 14M19 6L5 20M3 8l5-5M16 3l5 5"/>'),L:ic('<path d="M3 8l9-5 9 5v9l-9 5-9-5zM3 8l9 5 9-5M12 13v9"/>'),A:ic('<rect x="3" y="3" width="18" height="18"/><path d="M3 21L21 3"/>'),R:ic('<path d="M3 5v14M3 12h18M21 9v6"/>'),C:ic('<path d="M3 18V6M3 14h18v4M21 14v-3a3 3 0 0 0-3-3h-7v6"/><circle cx="7" cy="10.5" r="1.8"/>'),F:ic('<path d="M3 16l2 4h14l2-4zM6 16v-6h12v6M9 10V6h6v4"/>')};
+let S={cur:null,days:[],cfg:{a1:250,a2:510},last:{plate:'',odo:''},driver:''};
+try{Object.assign(S,JSON.parse(localStorage.getItem(KEY)))}catch(e){}
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}};
+const p2=n=>String(n).padStart(2,'0'),hm=ms=>{const m=Math.floor(ms/M);return Math.floor(m/60)+'h'+p2(m%60)},hms=ms=>{const s=Math.floor(ms/1000);return Math.floor(s/3600)+':'+p2(Math.floor(s%3600/60))+':'+p2(s%60)},clk=t=>{const d=new Date(t);return p2(d.getHours())+':'+p2(d.getMinutes())};
+const wk=t=>{const d=new Date(t);d.setHours(0,0,0,0);d.setDate(d.getDate()-((d.getDay()+6)%7));return d.getTime()};
+function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');clearTimeout(toast.t);toast.t=setTimeout(()=>t.classList.remove('show'),2500)}
+
+function calc(sg,now){let drive=0,work=0,cont=0,run=0,f=false;
+ const end=()=>{if(run>=45*M){cont=0;f=false}else if(run>=30*M&&f){cont=0;f=false}else if(run>=15*M&&run<30*M)f=true;run=0};
+ for(const[k,s,e]of sg){const d=(e||now)-s,m=BASE[k];if(m==='R'){run+=d;continue}if(run)end();if(m==='D'){drive+=d;work+=d;cont+=d}else if(m==='T')work+=d}
+ if(run)end();return{drive,work,cont}}
+function tot(sg,now){const t={D:0,T:0,A:0,R:0};sg.forEach(([k,s,e])=>t[BASE[k]]+=(e||now)-s);return t}
+function km(d){return d.o1!=null&&d.o2!=null&&d.o2>=d.o1?d.o2-d.o1:null}
+function weekDrive(now){const w=wk(now);let t=0;S.days.filter(x=>x.s>=w).forEach(x=>t+=calc(x.segs,x.e).drive);if(S.cur)t+=calc(S.cur.segs,now).drive;return t}
+const curAct=()=>S.cur.segs[S.cur.segs.length-1][0];
+
+/* sons e alertas */
+let ac=null,mst=null,bt=null;
+function unlock(){try{if(!ac){ac=new(window.AudioContext||window.webkitAudioContext)();const c=ac.createDynamicsCompressor();c.threshold.value=-24;c.knee.value=0;c.ratio.value=12;c.attack.value=.001;c.release.value=.1;mst=ac.createGain();mst.gain.value=1.4;mst.connect(c);c.connect(ac.destination)}if(ac.state==='suspended')ac.resume()}catch(e){}}
+function tone(f,t0,d,f2){if(!ac)return;const t=ac.currentTime+t0;['square','sawtooth'].forEach((ty,i)=>{const o=ac.createOscillator(),g=ac.createGain(),m=i?1.01:1;o.type=ty;o.frequency.setValueAtTime(f*m,t);if(f2)o.frequency.linearRampToValueAtTime(f2*m,t+d);g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(.9,t+.015);g.gain.setValueAtTime(.9,t+d-.03);g.gain.exponentialRampToValueAtTime(.0001,t+d);o.connect(g);g.connect(mst);o.start(t);o.stop(t+d+.05)})}
+function sound(k){unlock();if(k===1){for(let i=0;i<6;i++)tone(i%2?1000:1500,i*.28,.24)}else{for(let i=0;i<3;i++){tone(700,i,.5,1500);tone(1500,i+.5,.5,700)}}
+ try{navigator.vibrate&&navigator.vibrate(k===1?[300,100,300,100,300,100,300]:[800,200,800,200,800])}catch(e){}}
+function stopAlarm(){clearInterval(bt);bt=null;$('ban').className='ban';$('flash').className='flash'}
+function alarm(k,msg){stopAlarm();$('bmsg').textContent=msg;$('ban').className='ban show a'+k;$('flash').className='flash f'+k;sound(k);bt=setInterval(()=>sound(k),k===1?2800:3300)}
+$('bok').onclick=stopAlarm;
+
+/* ecrã ligado e GPS */
+let wl=null;async function wake(){try{if('wakeLock'in navigator&&S.cur)wl=await navigator.wakeLock.request('screen')}catch(e){}}
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){wake();render()}});
+let spd=0,lastG=0,gpsOn=false;
+function gps(){if(gpsOn)return;gpsOn=true;if(!navigator.geolocation){$('gpsStatus').textContent='GPS indisponível';return}
+ try{navigator.geolocation.watchPosition(p=>{const now=Date.now(),v=p.coords.speed!=null?Math.round(p.coords.speed*3.6):0;
+  if(spd>90&&lastG&&S.cur)S.cur.over90=(S.cur.over90||0)+Math.min(10,(now-lastG)/1000);lastG=now;spd=v;
+  $('gpsSpeed').textContent=v;$('gpsStatus').textContent='GPS OK';$('gpsStatus').style.color='#22c55e';
+  document.body.classList.toggle('flash-red',v>90);
+  if(S.cur&&v>=8&&curAct()!=='D'&&curAct()!=='F')setMode('D')},()=>{$('gpsStatus').textContent='GPS sem permissão'},{enableHighAccuracy:true})}catch(e){$('gpsStatus').textContent='GPS indisponível'}}
+
+/* ações */
+$('acts').innerHTML=Object.keys(NAME).map(k=>`<button class="act" data-k="${k}" data-b="${BASE[k]}">${ICON[k]}<span>${NAME[k]}</span></button>`).join('')+`<button class="act" id="art" data-b="W">${ic('<path d="M12 3l10 18H2zM12 10v5M12 18v.01"/>')}<span>Art. 12.º</span></button>`;
+$('acts').onclick=e=>{const b=e.target.closest('button');if(!b)return;unlock();if(b.id==='art'){$('artBox').classList.toggle('hid');return}setMode(b.dataset.k)};
+function setMode(k){const a=S.cur;if(!a||curAct()===k)return;const n=Date.now();a.segs[a.segs.length-1][2]=n;a.segs.push([k,n,null]);save();render()}
+$('artS').onclick=()=>{const v=$('artT').value.trim();if(!v||!S.cur)return;S.cur.art12.push([Date.now(),v]);save();$('artT').value='';$('artBox').classList.add('hid');toast('Exceção registada')};
+$('drv').onclick=()=>{if(!S.cur)return;S.cur.drv=S.cur.drv===1?2:1;save();render()};
+[['lp','plate',v=>v.trim().toUpperCase()],['lo1','o1',v=>parseInt(v)||null],['lo2','o2',v=>parseInt(v)||null]].forEach(([i,f,g])=>$(i).onchange=()=>{if(S.cur){S.cur[f]=g($(i).value);save()}});
+function view(){$('startScreen').classList.toggle('hid',!!S.cur);$('app').classList.toggle('hid',!S.cur)}
+$('go').onclick=()=>{unlock();const[h,m]=($('sT').value||'00:00').split(':').map(Number),d=new Date();d.setHours(h,m,0,0);if(d.getTime()>Date.now()+M)d.setDate(d.getDate()-1);const t=d.getTime();
+ S.cur={start:t,segs:[['T',t,null]],plate:$('sP').value.trim().toUpperCase(),o1:parseInt($('sO').value)||null,o2:null,art12:[],over90:0,fired:{},drv:1};save();view();wake();gps();render()};
+let armT=null;$('stop').onclick=()=>{const b=$('stop');if(!b.dataset.ok){b.dataset.ok=1;b.textContent='Toca outra vez para guardar';armT=setTimeout(()=>{delete b.dataset.ok;b.textContent='Terminar jornada'},4000);return}
+ clearTimeout(armT);delete b.dataset.ok;b.textContent='Terminar jornada';const a=S.cur,n=Date.now();a.segs[a.segs.length-1][2]=n;
+ S.days.push({s:a.start,e:n,segs:a.segs.filter(x=>x[2]>x[1]),plate:a.plate,o1:a.o1,o2:a.o2||null,drv:a.drv,art12:a.art12});
+ S.last={plate:a.plate,odo:a.o2||a.o1||''};S.cur=null;save();stopAlarm();document.body.classList.remove('flash-red','flash-yellow');try{wl&&wl.release()}catch(e){}prefill();view()};
+function prefill(){$('sP').value=S.last.plate||'';$('sO').value=S.last.odo||'';const n=new Date();$('sT').value=p2(n.getHours())+':'+p2(n.getMinutes())}
+
+/* ciclo */
+function render(){const now=Date.now(),n=new Date(now),a=S.cur;
+ $('clockTime').textContent=n.toLocaleTimeString('pt-PT');$('clockDate').textContent=n.toLocaleDateString('pt-PT',{weekday:'short',day:'numeric',month:'short'})+(a&&a.plate?' · '+a.plate:'');
+ if(!a)return;
+ const c=calc(a.segs,now),a1=S.cfg.a1*M,a2=S.cfg.a2*M,cr=Math.max(0,270*M-c.cont),dr=Math.max(0,540*M-c.drive),cur=curAct();
+ $('contTimer').textContent=hms(cr);$('contSub').textContent='Feita: '+hm(c.cont);$('dailyTimer').textContent=hm(dr);$('dailySub').textContent='Efetuado: '+hm(c.drive);
+ $('workTotal').textContent=hm(c.work);$('weekDrive').textContent=hm(weekDrive(now));
+ const o=Math.round(a.over90||0);$('speedOver').textContent=o<60?o+'s':Math.floor(o/60)+'m'+p2(o%60);$('drv').textContent='Condutor '+a.drv;
+ [['lp',a.plate],['lo1',a.o1],['lo2',a.o2]].forEach(([i,v])=>{if(document.activeElement!==$(i))$(i).value=v==null?'':v});
+ document.querySelectorAll('.act[data-k]').forEach(b=>b.classList.toggle('on',b.dataset.k===cur));
+ document.body.classList.toggle('flash-yellow',cur==='D'&&cr<=15*M);
+ if(cur==='D'){
+  if(c.cont>=a1&&!a.fired.a1){a.fired.a1=1;save();alarm(1,'Atenção: faltam '+hm(cr)+' para a pausa obrigatória')}
+  if(c.drive>=a2&&!a.fired.a2){a.fired.a2=1;save();alarm(2,'Condução diária: '+hm(c.drive)+'. Perto do limite de 9h')}}
+ if(c.cont<a1&&a.fired.a1){a.fired.a1=0;save()}}
+
+/* separadores */
+$('nav').onclick=e=>{const b=e.target.closest('button');if(!b)return;document.querySelectorAll('#nav button').forEach(x=>x.classList.toggle('on',x===b));
+ ['hoje','hist','cfg'].forEach(v=>$('t-'+v).classList.toggle('on',v===b.dataset.t));if(b.dataset.t==='hist'){draw();rel()}};
+function draw(){const by={};S.days.slice().sort((x,y)=>y.s-x.s).forEach(d=>{(by[wk(d.s)]=by[wk(d.s)]||[]).push(d)});const keys=Object.keys(by).sort((x,y)=>y-x);
+ $('hist').innerHTML=keys.length?keys.map(k=>{let D=0,W=0,K=0;const rows=by[k].map(d=>{const c=calc(d.segs,d.e);D+=c.drive;W+=c.work;K+=km(d)||0;
+  return `<div class="day"><span>${new Date(d.s).toLocaleDateString('pt-PT',{weekday:'short',day:'numeric',month:'short'})}<br><span class="mu">${clk(d.s)}–${clk(d.e)}${d.plate?' · '+d.plate:''}</span></span><span style="text-align:right">Cond. <b>${hm(c.drive)}</b><br><span class="mu">Trab. ${hm(c.work)}${km(d)!=null?' · '+km(d)+' km':''}</span></span><button data-del="${d.s}">Apagar</button></div>`}).join('');
+  return `<div class="card" style="margin-top:8px"><div class="wkh">Semana de ${new Date(+k).toLocaleDateString('pt-PT',{day:'numeric',month:'short'})} · cond. ${hm(D)} · trab. ${hm(W)} · ${K} km</div>${rows}</div>`}).join(''):'<div class="card mu" style="margin-top:8px">Ainda não há jornadas guardadas.</div>'}
+$('hist').onclick=e=>{const b=e.target.closest('[data-del]');if(!b)return;if(!b.dataset.ok){b.dataset.ok=1;b.textContent='Confirmar';setTimeout(()=>{delete b.dataset.ok;b.textContent='Apagar'},3000);return}S.days=S.days.filter(d=>String(d.s)!==b.dataset.del);save();draw();rel()};
+
+/* relatório */
+let per=7;
+function entries(p){const now=Date.now();let f;if(p===1)f=now-864e5;else{const d=new Date(wk(now));if(p===14)d.setDate(d.getDate()-7);f=d.getTime()}
+ const r=S.days.filter(x=>x.e>=f),a=S.cur;if(a)r.push({s:a.start,e:now,segs:a.segs,plate:a.plate,o1:a.o1,o2:a.o2||null,drv:a.drv,art12:a.art12,open:1});return r.sort((x,y)=>x.s-y.s)}
+function rel(){const E=entries(per),T={D:0,T:0,A:0,R:0};let K=0;E.forEach(d=>{const t=tot(d.segs,d.e);for(const q in T)T[q]+=t[q];K+=km(d)||0});
+ $('rprev').textContent=E.length+' jornada(s) · Condução '+hm(T.D)+' · Trabalho '+hm(T.T)+' · Disp. '+hm(T.A)+' · Repouso '+hm(T.R)+' · '+K+' km'}
+$('per').onclick=e=>{const b=e.target.closest('button');if(!b)return;per=+b.dataset.p;document.querySelectorAll('#per button').forEach(x=>x.classList.toggle('on',x===b));rel()};
+$('rn').value=S.driver||'';$('rn').onchange=()=>{S.driver=$('rn').value.trim();save()};
+/* guardar ficheiros: fora do Claude usa um download normal */
+async function saveFile(name,blob){
+ if(window.claude){try{const dl=await claude.use('downloads');if(dl){await dl.save({filename:name,data:blob});return true}}catch(e){if(e&&e.code==='declined')throw e}}
+ const u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),60000);return true}
+function mkPdf(p){const doc=new window.jspdf.jsPDF({orientation:'landscape',unit:'mm',format:'a4'}),E=entries(p);
+ doc.setFont('helvetica','bold');doc.setFontSize(16);doc.text('Relatório de jornada',14,16);
+ doc.setFont('helvetica','normal');doc.setFontSize(10);doc.text((p===1?'Últimas 24 horas':p===7?'Semana atual':'Últimas 2 semanas')+' - gerado em '+new Date().toLocaleString('pt-PT'),14,22);
+ doc.text('Condutor: '+(S.driver||'________________________'),14,28);
+ const H=['Data','Matrícula','Início - Fim','ODO início','ODO fim','Km','Condução','Outro trab.','Disponib.','Repouso'],X=[14,44,74,110,136,162,180,206,232,258];
+ let y=38;doc.setFont('helvetica','bold');doc.setFontSize(9);H.forEach((h,i)=>doc.text(h,X[i],y));doc.line(14,y+2,283,y+2);y+=8;doc.setFont('helvetica','normal');
+ const T={D:0,T:0,A:0,R:0},ex=[];let K=0;
+ E.forEach(d=>{if(y>185){doc.addPage();y=20}const t=tot(d.segs,d.e),k=km(d);for(const q in T)T[q]+=t[q];K+=k||0;(d.art12||[]).forEach(x=>ex.push(clk(x[0])+' - '+x[1]));
+  [new Date(d.s).toLocaleDateString('pt-PT',{weekday:'short',day:'2-digit',month:'2-digit'}),d.plate||'-',clk(d.s)+' - '+clk(d.e)+(d.open?' (em curso)':''),d.o1??'-',d.o2??'-',k??'-',hm(t.D),hm(t.T),hm(t.A),hm(t.R)].forEach((v,i)=>doc.text(String(v),X[i],y));y+=7});
+ if(y>185){doc.addPage();y=20}
+ doc.line(14,y-3,283,y-3);doc.setFont('helvetica','bold');y+=2;['Total','','','','',K+' km',hm(T.D),hm(T.T),hm(T.A),hm(T.R)].forEach((v,i)=>doc.text(v,X[i],y));
+ doc.setFont('helvetica','normal');doc.setFontSize(8);
+ if(ex.length){y+=8;doc.text('Art. 12.º: '+ex.join(' | ').slice(0,230),14,y)}
+ doc.text('Limites UE: condução diária 9h (10h duas vezes por semana), semanal 56h, quinzenal 90h. Documento de apoio, não substitui os registos do tacógrafo.',14,y+8);return doc}
+$('pdf').onclick=async()=>{const m=$('rmsg');m.textContent='';
+ if(!window.jspdf){m.textContent='A biblioteca de PDF não carregou. Verifica a ligação e tenta outra vez.';return}
+ try{
+  await saveFile('relatorio-tacografo-'+new Date().toISOString().slice(0,10)+'.pdf',mkPdf(per).output('blob'));m.textContent='PDF pronto. Abre-o para imprimir ou enviar por email.'}
+ catch(e){m.textContent=e&&e.code==='declined'?'Guardar cancelado.':'Não foi possível guardar o PDF.'}};
+
+/* alertas */
+$('a1').value=S.cfg.a1;$('a2').value=S.cfg.a2;
+['a1','a2'].forEach(k=>$(k).onchange=()=>{const v=parseInt($(k).value);if(v>0){S.cfg[k]=v;save()}});
+$('t1').onclick=()=>alarm(1,'Teste: alerta 1');$('t2').onclick=()=>alarm(2,'Teste: alerta 2');
+
+prefill();view();if(S.cur){wake();gps()}render();setInterval(render,1000);
+</script></body></html>
