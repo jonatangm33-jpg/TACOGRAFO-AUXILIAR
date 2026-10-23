@@ -1,0 +1,885 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#060d17">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Tacógrafo Pro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Barlow+Condensed:wght@500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
+<style>
+  :root {
+    --bg-dark: #060d17;
+    --panel-bg: #0d1626;
+    --panel-bg-2: #121e33;
+    --border-color: #1a2942;
+    --text-primary: #f8fafc;
+    --text-secondary: #94a3b8;
+    --text-muted: #64748b;
+    
+    --green-accent: #10b981;
+    --amber-accent: #f59e0b;
+    --blue-accent: #38bdf8;
+    --red-accent: #ef4444;
+    
+    --font-ui: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-num: 'Barlow Condensed', sans-serif;
+  }
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; padding: 0; min-height: 100%; background: var(--bg-dark); color: var(--text-primary); font-family: var(--font-ui); overflow-x: hidden; }
+  
+  body {
+    padding-top: max(env(safe-area-inset-top), 8px);
+    padding-bottom: calc(env(safe-area-inset-bottom) + 70px);
+    padding-left: max(env(safe-area-inset-left), 12px);
+    padding-right: max(env(safe-area-inset-right), 12px);
+    font-size: 14px;
+  }
+
+  .num { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
+  .hidden { display: none !important; }
+
+  /* TOP HEADER BAR */
+  .header-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 0 12px 0;
+  }
+  .header-left { display: flex; align-items: center; gap: 10px; }
+  .menu-icon { font-size: 20px; cursor: pointer; color: var(--text-secondary); }
+  .truck-brand { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 17px; letter-spacing: -0.2px; }
+  .status-badge { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--green-accent); margin-left: 12px; }
+  .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green-accent); box-shadow: 0 0 10px var(--green-accent); }
+
+  .header-right { display: flex; align-items: center; gap: 12px; }
+  .date-time-box { text-align: right; }
+  .header-date { font-size: 11px; color: var(--text-secondary); font-weight: 500; text-transform: capitalize; }
+  .header-time { font-family: var(--font-num); font-weight: 700; font-size: 22px; line-height: 1; }
+  .settings-btn { font-size: 18px; color: var(--text-secondary); cursor: pointer; }
+
+  /* MAIN GRID LAYOUT */
+  .layout-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  @media (min-width: 768px) or (orientation: landscape) {
+    .layout-grid {
+      grid-template-columns: 280px 1fr 1fr;
+    }
+  }
+
+  /* CARD STYLES */
+  .card {
+    background: var(--panel-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 18px;
+    padding: 14px;
+    position: relative;
+  }
+
+  /* SPEEDOMETER CARD */
+  .speed-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 230px;
+  }
+
+  .speed-ring-container {
+    position: relative;
+    width: 190px;
+    height: 190px;
+    border-radius: 50%;
+    background: conic-gradient(var(--green-accent) 0%, var(--panel-bg-2) 0%, var(--panel-bg-2) 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 0 25px rgba(16, 185, 129, 0.15);
+    transition: background 0.3s ease;
+  }
+
+  .speed-ring-container::before {
+    content: '';
+    position: absolute;
+    inset: 12px;
+    border-radius: 50%;
+    background: var(--bg-dark);
+  }
+
+  .speed-display-inner {
+    position: relative;
+    z-index: 2;
+    text-align: center;
+  }
+
+  .speed-value {
+    font-family: var(--font-num);
+    font-size: 78px;
+    font-weight: 800;
+    line-height: 0.85;
+    letter-spacing: -2px;
+  }
+
+  .speed-unit {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    margin-top: 4px;
+  }
+
+  .speed-limit-badge {
+    position: absolute;
+    bottom: -8px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--bg-dark);
+    border: 3px solid var(--red-accent);
+    color: var(--red-accent);
+    font-weight: 900;
+    font-size: 15px;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 3;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.6);
+  }
+
+  /* ODO CARDS */
+  .odo-card-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+
+  .odo-box {
+    background: var(--panel-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    padding: 12px;
+  }
+
+  .odo-title { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+  .odo-val { font-family: var(--font-num); font-size: 32px; font-weight: 800; line-height: 1.1; margin-top: 2px; }
+  .odo-unit { font-size: 14px; font-weight: 600; color: var(--text-secondary); }
+  .odo-sub { font-size: 11px; color: var(--text-secondary); margin-top: 4px; }
+
+  /* TIMERS AND BARS */
+  .timer-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+  .timer-row:last-child { margin-bottom: 0; }
+
+  .timer-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .timer-icon.steering { background: rgba(56, 189, 248, 0.12); color: var(--blue-accent); }
+  .timer-icon.coffee { background: rgba(245, 158, 11, 0.12); color: var(--amber-accent); }
+  .timer-icon.bed { background: rgba(16, 185, 129, 0.12); color: var(--green-accent); }
+
+  .timer-info { flex: 1; }
+  .timer-header { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-secondary); font-weight: 600; margin-bottom: 2px; }
+  .timer-digits { display: flex; align-items: baseline; justify-content: space-between; }
+  .timer-main { font-family: var(--font-num); font-size: 22px; font-weight: 800; line-height: 1; }
+  .timer-total { font-family: var(--font-num); font-size: 14px; color: var(--text-muted); }
+
+  .progress-bar-bg { height: 6px; background: var(--panel-bg-2); border-radius: 4px; overflow: hidden; margin-top: 6px; }
+  .progress-bar-fill { height: 100%; border-radius: 4px; transition: width 0.4s ease; }
+  .fill-blue { background: var(--blue-accent); }
+  .fill-amber { background: var(--amber-accent); }
+  .fill-green { background: var(--green-accent); }
+
+  /* SELECTOR DE ATIVIDADE */
+  .act-selector {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .act-btn {
+    background: var(--panel-bg-2);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 10px 4px;
+    text-align: center;
+    cursor: pointer;
+    color: var(--text-muted);
+    transition: all 0.2s;
+  }
+  .act-btn.active {
+    border-color: var(--blue-accent);
+    background: rgba(56, 189, 248, 0.15);
+    color: var(--text-primary);
+  }
+  .act-btn-icon { font-size: 20px; display: block; margin-bottom: 2px; }
+  .act-btn-label { font-size: 10px; font-weight: 700; text-transform: uppercase; }
+
+  /* DAY SUMMARY GRID */
+  .summary-section-title { font-size: 12px; font-weight: 700; color: var(--text-secondary); margin-bottom: 8px; }
+  .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+  }
+
+  .summary-item {
+    background: var(--panel-bg-2);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 8px 4px;
+    text-align: center;
+  }
+  .summary-item-icon { font-size: 18px; margin-bottom: 2px; }
+  .summary-item-label { font-size: 9px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; }
+  .summary-item-val { font-family: var(--font-num); font-size: 16px; font-weight: 800; margin-top: 2px; }
+  .summary-item-sub { font-size: 9px; color: var(--text-muted); }
+
+  /* NEXT ACTIONS & CHIPS */
+  .actions-list { display: flex; flex-direction: column; gap: 8px; }
+  .action-item {
+    background: var(--panel-bg-2);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 10px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .action-left { display: flex; align-items: center; gap: 10px; }
+  .action-title { font-size: 11px; color: var(--text-secondary); font-weight: 600; }
+  .action-time { font-family: var(--font-num); font-size: 16px; font-weight: 800; }
+  .action-sub { font-size: 10px; color: var(--text-muted); }
+
+  /* FOOTER STATUS CHIPS */
+  .status-chips-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border-color);
+    font-size: 10px;
+    color: var(--text-muted);
+  }
+  .status-chip { display: flex; align-items: center; gap: 4px; }
+  .status-chip.active { color: var(--green-accent); }
+
+  /* BOTTOM NAVIGATION BAR */
+  .bottom-nav {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    height: calc(60px + env(safe-area-inset-bottom));
+    background: rgba(13, 22, 38, 0.95);
+    backdrop-filter: blur(12px);
+    border-top: 1px solid var(--border-color);
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    z-index: 100;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .nav-item {
+    background: none; border: none;
+    color: var(--text-muted);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 3px; font-size: 10px; font-weight: 700; cursor: pointer;
+  }
+  .nav-item.active { color: var(--blue-accent); }
+  .nav-item span { font-size: 18px; }
+
+  /* TAB VIEWS */
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  /* HISTORY ITEM LIST */
+  .history-card {
+    background: var(--panel-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    padding: 12px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .history-left { display: flex; align-items: center; gap: 10px; }
+  .history-icon-box {
+    width: 36px; height: 36px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center; font-size: 18px;
+  }
+  .history-title { font-weight: 700; font-size: 13px; }
+  .history-time { font-size: 11px; color: var(--text-muted); }
+  .history-duration { font-family: var(--font-num); font-size: 18px; font-weight: 800; }
+
+  /* FORM STYLES */
+  input, select {
+    width: 100%;
+    background: var(--panel-bg-2);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    border-radius: 10px;
+    padding: 12px;
+    font-size: 14px;
+    outline: none;
+  }
+  .btn {
+    width: 100%;
+    border: none;
+    border-radius: 10px;
+    padding: 12px;
+    font-weight: 700;
+    font-size: 14px;
+    cursor: pointer;
+    background: var(--blue-accent);
+    color: #000;
+  }
+  .btn-green { background: var(--green-accent); color: #000; }
+
+  /* FLASH ALERTS */
+  body.flash-red { animation: flashRed 0.5s infinite alternate; }
+  @keyframes flashRed { from { background: var(--bg-dark); } to { background: rgba(239, 68, 68, 0.25); } }
+</style>
+</head>
+<body>
+
+<!-- HEADER BAR -->
+<header class="header-bar">
+  <div class="header-left">
+    <div class="menu-icon" onclick="switchTab('definicoes')">☰</div>
+    <div class="truck-brand">
+      <span style="color:var(--blue-accent);">🚛</span> Tacógrafo Pro
+    </div>
+    <div class="status-badge">
+      <span class="status-dot"></span> <span id="statusLabel">Condução em curso</span>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="date-time-box">
+      <div class="header-date" id="headerDate">---</div>
+      <div class="header-time num" id="headerClock">00:00</div>
+    </div>
+    <div class="settings-btn" onclick="switchTab('definicoes')">⚙</div>
+  </div>
+</header>
+
+<!-- MAIN TAB: HOME (PAINEL PRINCIPAL) -->
+<div id="tab-hoje" class="tab-content active">
+  
+  <!-- SELEÇÃO DE ATIVIDADE ATIVA -->
+  <div class="act-selector">
+    <div class="act-btn active" id="act-D" onclick="setActivity('D')">
+      <span class="act-btn-icon">☸</span>
+      <span class="act-btn-label">Condução</span>
+    </div>
+    <div class="act-btn" id="act-T" onclick="setActivity('T')">
+      <span class="act-btn-icon">🔧</span>
+      <span class="act-btn-label">Trabalho</span>
+    </div>
+    <div class="act-btn" id="act-A" onclick="setActivity('A')">
+      <span class="act-btn-icon">⏱</span>
+      <span class="act-btn-label">Disponib.</span>
+    </div>
+    <div class="act-btn" id="act-R" onclick="setActivity('R')">
+      <span class="act-btn-icon">🛏</span>
+      <span class="act-btn-label">Repouso</span>
+    </div>
+  </div>
+
+  <div class="layout-grid">
+    
+    <!-- COLUNA 1: VELOCÍMETRO -->
+    <div class="card speed-card">
+      <div class="speed-ring-container" id="speedRing">
+        <div class="speed-display-inner">
+          <div class="speed-value num" id="speedVal">0</div>
+          <div class="speed-unit">km/h</div>
+        </div>
+        <div class="speed-limit-badge" id="speedLimitBadge">90</div>
+      </div>
+    </div>
+
+    <!-- COLUNA 2: ODO & BARRAS -->
+    <div>
+      <!-- ODO GRID -->
+      <div class="odo-card-grid">
+        <div class="odo-box">
+          <div class="odo-title">ODO</div>
+          <div class="odo-val num" id="odoTotal">458 732</div>
+          <div class="odo-sub" id="odoDelta">+ 0 km (sessão)</div>
+        </div>
+        <div class="odo-box">
+          <div class="odo-title">Km de hoje</div>
+          <div class="odo-val num" id="odoToday">0</div>
+          <div class="odo-unit">km</div>
+        </div>
+      </div>
+
+      <!-- TIMERS CARD -->
+      <div class="card">
+        <div class="timer-row">
+          <div class="timer-icon steering">☸</div>
+          <div class="timer-info">
+            <div class="timer-header">
+              <span>Condução contínua restante</span>
+            </div>
+            <div class="timer-digits">
+              <span class="timer-main num" id="driveCont">04:30</span>
+              <span class="timer-total num">/ 04:30</span>
+            </div>
+            <div class="progress-bar-bg">
+              <div class="progress-bar-fill fill-blue" id="fillDrive" style="width: 0%;"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="timer-row">
+          <div class="timer-icon coffee">☕</div>
+          <div class="timer-info">
+            <div class="timer-header">
+              <span>Pausa efetuada</span>
+            </div>
+            <div class="timer-digits">
+              <span class="timer-main num" id="pauseNeeded">00:00</span>
+              <span class="timer-total num">/ 00:45</span>
+            </div>
+            <div class="progress-bar-bg">
+              <div class="progress-bar-fill fill-amber" id="fillPause" style="width: 0%;"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="timer-row">
+          <div class="timer-icon bed">🛏</div>
+          <div class="timer-info">
+            <div class="timer-header">
+              <span>Condução diária restante</span>
+            </div>
+            <div class="timer-digits">
+              <span class="timer-main num" id="restDaily">09:00</span>
+              <span class="timer-total num">/ 09:00</span>
+            </div>
+            <div class="progress-bar-bg">
+              <div class="progress-bar-fill fill-green" id="fillRest" style="width: 0%;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- COLUNA 3: RESUMO DO DIA & PRÓXIMAS AÇÕES -->
+    <div>
+      <div class="card" style="margin-bottom: 12px;">
+        <div class="summary-section-title">Resumo do dia</div>
+        <div class="summary-grid">
+          <div class="summary-item">
+            <div class="summary-item-icon" style="color:var(--green-accent);">☸</div>
+            <div class="summary-item-label">Condução</div>
+            <div class="summary-item-val num" id="sumDrive">00:00</div>
+            <div class="summary-item-sub">(máx 9h)</div>
+          </div>
+          <div class="summary-item">
+            <div class="summary-item-icon" style="color:var(--amber-accent);">🔧</div>
+            <div class="summary-item-label">Trabalho</div>
+            <div class="summary-item-val num" id="sumWork">00:00</div>
+            <div class="summary-item-sub">Outro</div>
+          </div>
+          <div class="summary-item">
+            <div class="summary-item-icon" style="color:var(--blue-accent);">⏱</div>
+            <div class="summary-item-label">Disponib.</div>
+            <div class="summary-item-val num" id="sumAvail">00:00</div>
+            <div class="summary-item-sub">Espera</div>
+          </div>
+          <div class="summary-item">
+            <div class="summary-item-icon" style="color:var(--green-accent);">🛏</div>
+            <div class="summary-item-label">Repouso</div>
+            <div class="summary-item-val num" id="sumRest">00:00</div>
+            <div class="summary-item-sub">Pausa</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="summary-section-title">Próximas ações</div>
+        <div class="actions-list">
+          <div class="action-item">
+            <div class="action-left">
+              <span style="color:var(--amber-accent); font-size: 18px;">☕</span>
+              <div>
+                <div class="action-title">Pausa obrigatória em:</div>
+                <div class="action-sub" id="nextPauseTime">--:--</div>
+              </div>
+            </div>
+            <div class="action-time num" id="nextPauseCountdown">04:30</div>
+          </div>
+
+          <div class="action-item">
+            <div class="action-left">
+              <span style="color:var(--blue-accent); font-size: 18px;">📅</span>
+              <div>
+                <div class="action-title">Limite diário de condução</div>
+                <div class="action-sub">(restante)</div>
+              </div>
+            </div>
+            <div class="action-time num" id="dailyDriveRemaining">09:00</div>
+          </div>
+        </div>
+
+        <div class="status-chips-row">
+          <div class="status-chip active">💳 Cartão: <b>Inserido</b></div>
+          <div class="status-chip active">🚛 Veículo: <b id="plateDisplay">AA-00-AA</b></div>
+          <div class="status-chip active">☁ Dados: <b>Guardados</b></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- TAB: RELATÓRIOS / HISTÓRICO -->
+<div id="tab-relatorios" class="tab-content">
+  <div class="card" style="margin-bottom: 12px;">
+    <h3 style="margin:0 0 12px 0;">Relatório do dia</h3>
+    <div class="actions-list" id="historyList">
+      <div style="color:var(--text-muted); text-align:center; padding:12px;">Sem registos no dia de hoje.</div>
+    </div>
+    <button class="btn btn-green" style="margin-top: 15px;" onclick="exportPDF()">Exportar PDF</button>
+  </div>
+</div>
+
+<!-- TAB: DEFINIÇÕES -->
+<div id="tab-definicoes" class="tab-content">
+  <div class="card">
+    <h3 style="margin:0 0 16px 0;">Definições & Configuração</h3>
+    <div style="margin-bottom: 12px;">
+      <label style="font-size: 11px; color: var(--text-muted); font-weight: 700;">MATRÍCULA DA VIATURA</label>
+      <input type="text" id="cfgPlate" value="AA-00-AA" style="margin-top: 4px;">
+    </div>
+    <div style="margin-bottom: 12px;">
+      <label style="font-size: 11px; color: var(--text-muted); font-weight: 700;">LEITURA INICIAL DO ODO (KM)</label>
+      <input type="number" id="cfgOdo" value="458732" style="margin-top: 4px;">
+    </div>
+    <div style="margin-bottom: 16px;">
+      <label style="font-size: 11px; color: var(--text-muted); font-weight: 700;">LIMITE DE VELOCIDADE (KM/H)</label>
+      <input type="number" id="cfgSpeedLimit" value="90" style="margin-top: 4px;">
+    </div>
+    <button class="btn" onclick="saveSettings()">Guardar e Voltar</button>
+  </div>
+</div>
+
+<!-- BOTTOM NAVIGATION -->
+<nav class="bottom-nav">
+  <button class="nav-item active" id="nav-hoje" onclick="switchTab('hoje')">
+    <span>🏠</span> Hoje
+  </button>
+  <button class="nav-item" id="nav-relatorios" onclick="switchTab('relatorios')">
+    <span>📄</span> Relatórios
+  </button>
+  <button class="nav-item" id="nav-definicoes" onclick="switchTab('definicoes')">
+    <span>⚙</span> Definições
+  </button>
+</nav>
+
+<script>
+(function() {
+  "use strict";
+
+  const STORAGE_KEY = "tacografo_v2_store";
+  const MS = 1000;
+  const MIN = 60 * MS;
+  const HOUR = 60 * MIN;
+  const LIMIT_CONT = 270 * MIN; // 4h30
+  const LIMIT_DAILY = 540 * MIN; // 9h00
+
+  let state = {
+    plate: "AA-00-AA",
+    odoStart: 458732,
+    gpsKm: 0,
+    speedLimit: 90,
+    currentActivity: "D",
+    segments: [],
+    lastGpsCoords: null
+  };
+
+  // Carregar dados guardados
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      state = { ...state, ...parsed };
+    }
+  } catch(e) {}
+
+  if (!state.segments.length) {
+    state.segments.push({ act: "D", start: Date.now(), end: null });
+  }
+
+  function saveStore() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    } catch(e) {}
+  }
+
+  function fmtHM(ms) {
+    let m = Math.max(0, Math.floor(ms / MIN));
+    let h = Math.floor(m / 60);
+    return String(h).padStart(2, '0') + ":" + String(m % 60).padStart(2, '0');
+  }
+
+  function fmtHMS(ms) {
+    let s = Math.max(0, Math.floor(ms / 1000));
+    let h = Math.floor(s / 3600);
+    let m = Math.floor((s % 3600) / 60);
+    let sec = s % 60;
+    return String(h).padStart(2, '0') + ":" + String(m).padStart(2, '0');
+  }
+
+  window.switchTab = function(tabId) {
+    document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+    
+    const targetTab = document.getElementById('tab-' + tabId);
+    if (targetTab) targetTab.classList.add('active');
+    
+    const navBtn = document.getElementById('nav-' + tabId);
+    if (navBtn) navBtn.classList.add('active');
+
+    if (tabId === 'relatorios') renderHistory();
+  };
+
+  window.setActivity = function(actKey) {
+    if (state.currentActivity === actKey) return;
+    const now = Date.now();
+    if (state.segments.length && state.segments[state.segments.length - 1].end === null) {
+      state.segments[state.segments.length - 1].end = now;
+    }
+    state.segments.push({ act: actKey, start: now, end: null });
+    state.currentActivity = actKey;
+    saveStore();
+    renderUI();
+  };
+
+  window.saveSettings = function() {
+    const plateInput = document.getElementById('cfgPlate').value.trim().toUpperCase();
+    const odoInput = parseFloat(document.getElementById('cfgOdo').value);
+    const speedLimitInput = parseInt(document.getElementById('cfgSpeedLimit').value, 10);
+
+    if (plateInput) state.plate = plateInput;
+    if (!isNaN(odoInput)) state.odoStart = odoInput;
+    if (!isNaN(speedLimitInput)) state.speedLimit = speedLimitInput;
+
+    saveStore();
+    renderUI();
+    switchTab('hoje');
+  };
+
+  function calculateTotals() {
+    const now = Date.now();
+    let drive = 0, work = 0, avail = 0, rest = 0, cont = 0, pauseAcc = 0;
+
+    state.segments.forEach(s => {
+      const end = s.end || now;
+      const dur = Math.max(0, end - s.start);
+
+      if (s.act === 'D') {
+        drive += dur;
+        cont += dur;
+      } else if (s.act === 'T') {
+        work += dur;
+      } else if (s.act === 'A') {
+        avail += dur;
+      } else if (s.act === 'R') {
+        rest += dur;
+        pauseAcc += dur;
+        if (dur >= 45 * MIN) cont = 0; // Reseta condução contínua após pausa de 45m
+      }
+    });
+
+    return { drive, work, avail, rest, cont, pauseAcc };
+  }
+
+  function renderUI() {
+    const now = Date.now();
+    const totals = calculateTotals();
+
+    // Atualizar relógio e data
+    const d = new Date();
+    document.getElementById('headerClock').textContent = d.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' });
+    document.getElementById('headerDate').textContent = d.toLocaleDateString('pt-PT', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+
+    // Atualizar ODO
+    const currentOdo = Math.round(state.odoStart + state.gpsKm);
+    document.getElementById('odoTotal').textContent = currentOdo.toLocaleString('pt-PT');
+    document.getElementById('odoToday').textContent = Math.round(state.gpsKm).toLocaleString('pt-PT');
+    document.getElementById('odoDelta').textContent = `+ ${Math.round(state.gpsKm)} km (sessão)`;
+    document.getElementById('plateDisplay').textContent = state.plate;
+    document.getElementById('speedLimitBadge').textContent = state.speedLimit;
+
+    // Atualizar formulário das definições
+    document.getElementById('cfgPlate').value = state.plate;
+    document.getElementById('cfgOdo').value = state.odoStart;
+    document.getElementById('cfgSpeedLimit').value = state.speedLimit;
+
+    // Botões de Atividade
+    document.querySelectorAll('.act-btn').forEach(btn => btn.classList.remove('active'));
+    const activeBtn = document.getElementById('act-' + state.currentActivity);
+    if (activeBtn) activeBtn.classList.add('active');
+
+    // Estado do Badge Superior
+    const actLabels = { D: "Condução em curso", T: "Trabalho em curso", A: "Disponibilidade", R: "Repouso/Pausa" };
+    document.getElementById('statusLabel').textContent = actLabels[state.currentActivity] || "Ativo";
+
+    // Timers
+    const contRem = Math.max(0, LIMIT_CONT - totals.cont);
+    const dailyRem = Math.max(0, LIMIT_DAILY - totals.drive);
+    document.getElementById('driveCont').textContent = fmtHM(contRem);
+    document.getElementById('restDaily').textContent = fmtHM(dailyRem);
+    document.getElementById('pauseNeeded').textContent = fmtHM(totals.pauseAcc);
+
+    // Barras de Progresso
+    const pctDrive = Math.min(100, (totals.cont / LIMIT_CONT) * 100);
+    const pctPause = Math.min(100, (totals.pauseAcc / (45 * MIN)) * 100);
+    const pctDaily = Math.min(100, (totals.drive / LIMIT_DAILY) * 100);
+
+    document.getElementById('fillDrive').style.width = pctDrive + "%";
+    document.getElementById('fillPause').style.width = pctPause + "%";
+    document.getElementById('fillRest').style.width = pctDaily + "%";
+
+    // Resumo Diário
+    document.getElementById('sumDrive').textContent = fmtHM(totals.drive);
+    document.getElementById('sumWork').textContent = fmtHM(totals.work);
+    document.getElementById('sumAvail').textContent = fmtHM(totals.avail);
+    document.getElementById('sumRest').textContent = fmtHM(totals.rest);
+
+    // Próximas Ações
+    document.getElementById('nextPauseCountdown').textContent = fmtHM(contRem);
+    document.getElementById('dailyDriveRemaining').textContent = fmtHM(dailyRem);
+    
+    const pauseTargetTime = new Date(now + contRem);
+    document.getElementById('nextPauseTime').textContent = `(às ${pauseTargetTime.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })})`;
+  }
+
+  function getDistanceKm(lat1, lon1, lat2, lon2) {
+    const R = 6371;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLon/2) * Math.sin(dLon/2);
+    return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  }
+
+  function initGPS() {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.watchPosition(pos => {
+      const speed = pos.coords.speed == null ? 0 : Math.max(0, Math.round(pos.coords.speed * 3.6));
+      document.getElementById('speedVal').textContent = speed;
+
+      // Anel de Velocidade Dinâmico
+      const pct = Math.min(100, (speed / 120) * 100);
+      const isOver = speed > state.speedLimit;
+      const ringColor = isOver ? 'var(--red-accent)' : 'var(--green-accent)';
+      document.getElementById('speedRing').style.background = `conic-gradient(${ringColor} ${pct}%, var(--panel-bg-2) ${pct}%, var(--panel-bg-2) 100%)`;
+
+      if (isOver) {
+        document.body.classList.add('flash-red');
+      } else {
+        document.body.classList.remove('flash-red');
+      }
+
+      // Distância acumulada
+      if (state.lastGpsCoords) {
+        const dist = getDistanceKm(state.lastGpsCoords.lat, state.lastGpsCoords.lon, pos.coords.latitude, pos.coords.longitude);
+        if (dist > 0 && dist < 0.25 && pos.coords.accuracy < 60) {
+          state.gpsKm += dist;
+          saveStore();
+        }
+      }
+      state.lastGpsCoords = { lat: pos.coords.latitude, lon: pos.coords.longitude };
+      renderUI();
+    }, err => {}, { enableHighAccuracy: true, maximumAge: 1500, timeout: 10000 });
+  }
+
+  function renderHistory() {
+    const container = document.getElementById('historyList');
+    if (!state.segments.length) {
+      container.innerHTML = '<div style="color:var(--text-muted); text-align:center; padding:12px;">Sem registos.</div>';
+      return;
+    }
+
+    const icons = { D: '☸', T: '🔧', A: '⏱', R: '🛏' };
+    const colors = { D: 'var(--green-accent)', T: 'var(--amber-accent)', A: 'var(--blue-accent)', R: 'var(--green-accent)' };
+    const names = { D: 'Condução', T: 'Trabalho', A: 'Disponibilidade', R: 'Repouso/Pausa' };
+
+    const now = Date.now();
+    const html = state.segments.slice().reverse().map(s => {
+      const startStr = new Date(s.start).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' });
+      const endStr = s.end ? new Date(s.end).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' }) : 'Em curso';
+      const dur = fmtHM(Math.max(0, (s.end || now) - s.start));
+
+      return `
+        <div class="history-card">
+          <div class="history-left">
+            <div class="history-icon-box" style="background:rgba(255,255,255,0.08); color:${colors[s.act]};">${icons[s.act]}</div>
+            <div>
+              <div class="history-title">${names[s.act]}</div>
+              <div class="history-time">${startStr} – ${endStr}</div>
+            </div>
+          </div>
+          <div class="history-duration num">${dur}</div>
+        </div>
+      `;
+    }).join('');
+
+    container.innerHTML = html;
+  }
+
+  window.exportPDF = function() {
+    if (!window.jspdf?.jsPDF) { alert("A carregar suporte para PDF..."); return; }
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    doc.setFontSize(16);
+    doc.text("Tacógrafo Pro - Relatório Diário", 14, 18);
+    doc.setFontSize(10);
+    doc.text(`Viatura: ${state.plate} | ODO: ${Math.round(state.odoStart + state.gpsKm)} km`, 14, 26);
+    doc.text(`Data: ${new Date().toLocaleDateString('pt-PT')}`, 14, 32);
+
+    let y = 42;
+    state.segments.forEach(s => {
+      const names = { D: 'Condução', T: 'Trabalho', A: 'Disponibilidade', R: 'Repouso' };
+      const startStr = new Date(s.start).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' });
+      const endStr = s.end ? new Date(s.end).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' }) : 'Em curso';
+      doc.text(`${startStr} - ${endStr} | ${names[s.act]}`, 14, y);
+      y += 8;
+    });
+
+    doc.save(`relatorio-${state.plate}.pdf`);
+  };
+
+  setInterval(renderUI, 1000);
+  renderUI();
+  initGPS();
+})();
+</script>
+</body>
+</html>
