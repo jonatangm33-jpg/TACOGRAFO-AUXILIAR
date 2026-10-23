@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#060b13">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Tacógrafo Pro — UI Proposta 1</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700;800&family=Barlow+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
+<style>
+  :root {
+    --bg: #060b13; --panel: #0f1825; --panel-2: #141f30; --line: #1c2a3e;
+    --text: #f1f5f9; --muted: #8b9eb3;
+    --blue: #38bdf8; --amber: #f59e0b; --green: #10b981; --red: #ef4444; --cyan: #22d3ee;
+    --ui: 'Barlow', sans-serif; --num: 'Barlow Condensed', sans-serif;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; min-height: 100%; background: var(--bg); color: var(--text); font-family: var(--ui); overflow-x: hidden; }
+  body { padding: calc(env(safe-area-inset-top) + 8px) 12px calc(env(safe-area-inset-bottom) + 72px); font-size: 14px; transition: background 0.3s; }
+  button { cursor: pointer; font: inherit; }
+  .num { font-family: var(--num); font-variant-numeric: tabular-nums; }
+  .hidden { display: none !important; }
+
+  /* TOPBAR */
+  .topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .brand { font-weight: 700; font-size: 18px; display: flex; align-items: center; gap: 6px; }
+  .brand span { font-size: 20px; }
+  .status-pill { background: rgba(16, 185, 129, 0.15); color: var(--green); font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 12px; border: 1px solid rgba(16, 185, 129, 0.3); }
+  .clock-header { text-align: right; font-family: var(--num); font-size: 20px; font-weight: 700; }
+  .date-header { font-size: 10px; color: var(--muted); text-transform: capitalize; }
+
+  /* VELOCÍMETRO CIRCULAR */
+  .speed-container { display: flex; justify-content: center; margin: 10px 0 20px; position: relative; }
+  .speed-ring { width: 220px; height: 220px; border-radius: 50%; background: conic-gradient(var(--green) 0%, var(--green) 0%, var(--panel-2) 0%, var(--panel-2) 100%); display: flex; align-items: center; justify-content: center; position: relative; box-shadow: 0 0 30px rgba(16, 185, 129, 0.1); transition: background 0.2s; }
+  .speed-ring::before { content: ''; position: absolute; inset: 12px; border-radius: 50%; background: var(--bg); }
+  .speed-inner { position: relative; text-align: center; margin-top: 10px; }
+  .speed-val { font: 700 72px/1 var(--num); letter-spacing: -2px; margin: 0; }
+  .speed-unit { font-size: 14px; font-weight: 600; color: var(--muted); }
+  .limit-badge { position: absolute; bottom: -10px; left: 50%; transform: translateX(-50%); background: var(--bg); border: 3px solid var(--red); color: var(--red); font-weight: 800; font-size: 16px; width: 46px; height: 46px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(0,0,0,0.5); z-index: 2; }
+
+  /* CARTÕES ODO E KM */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 14px; }
+  .card-title { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+  .card-val { font: 700 28px/1 var(--num); color: var(--text); }
+  .card-sub { font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+  /* BARRAS DE PROGRESSO (TEMPOS) */
+  .time-row { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+  .time-row:last-child { margin-bottom: 0; }
+  .icon-box { width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
+  .icon-box.drive { background: rgba(245, 158, 11, 0.15); color: var(--amber); }
+  .icon-box.pause { background: rgba(56, 189, 248, 0.15); color: var(--blue); }
+  .icon-box.rest { background: rgba(16, 185, 129, 0.15); color: var(--green); }
+  
+  .time-info { flex: 1; }
+  .time-header { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); margin-bottom: 4px; font-weight: 600; }
+  .time-val { font-family: var(--num); font-size: 18px; font-weight: 700; line-height: 1; }
+  .time-val.limit { font-size: 12px; color: var(--muted); font-weight: 400; }
+  
+  .progress-bg { height: 6px; background: var(--panel-2); border-radius: 3px; overflow: hidden; margin-top: 6px; }
+  .progress-fill { height: 100%; border-radius: 3px; transition: width 0.5s ease, background 0.3s; }
+  .fill-drive { background: var(--amber); width: 0%; }
+  .fill-pause { background: var(--blue); width: 0%; }
+  .fill-rest { background: var(--green); width: 0%; }
+
+  /* RESUMO DO DIA (ÍCONES) */
+  .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; text-align: center; }
+  .summary-item { background: var(--panel-2); border: 1px solid var(--line); border-radius: 12px; padding: 10px 4px; }
+  .summary-icon { font-size: 20px; margin-bottom: 4px; }
+  .summary-val { font-family: var(--num); font-size: 16px; font-weight: 700; color: var(--text); }
+  .summary-label { font-size: 9px; color: var(--muted); text-transform: uppercase; }
+
+  /* BOTÕES DE AÇÃO */
+  .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 14px; }
+  .btn { border: none; border-radius: 12px; padding: 12px; font-weight: 700; font-size: 13px; display: flex; align-items: center; justify-content: center; gap: 6px; }
+  .btn.red { background: var(--red); color: white; }
+  .btn.dark { background: var(--panel); border: 1px solid var(--line); color: var(--text); }
+
+  /* NAV BAR */
+  .nav { position: fixed; bottom: 0; left: 0; right: 0; height: calc(60px + env(safe-area-inset-bottom)); background: #0d1728f5; backdrop-filter: blur(10px); border-top: 1px solid var(--line); display: grid; grid-template-columns: repeat(3, 1fr); z-index: 50; padding-bottom: env(safe-area-inset-bottom); }
+  .nav button { background: none; border: none; color: var(--muted); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 10px; font-weight: 600; }
+  .nav button.active { color: var(--blue); }
+  .nav span { font-size: 20px; }
+
+  /* MODAIS */
+  .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 100; display: flex; align-items: center; justify-content: center; padding: 16px; backdrop-filter: blur(4px); }
+  .modal-box { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 16px; width: 100%; max-width: 400px; max-height: 85dvh; overflow-y: auto; }
+  .history-item { padding: 12px; background: var(--panel-2); border-radius: 10px; margin-bottom: 8px; font-size: 12px; line-height: 1.5; border: 1px solid var(--line); }
+  
+  /* ALERTAS */
+  body.flash-red { animation: flashRed 0.4s infinite alternate; }
+  body.flash-yellow { animation: flashYellow 0.8s infinite alternate; }
+  @keyframes flashRed { from { background: var(--bg); } to { background: rgba(239, 68, 68, 0.3); } }
+  @keyframes flashYellow { from { background: var(--bg); } to { background: rgba(245, 158, 11, 0.3); } }
+  
+  .tab { display: none; }
+  .tab.active { display: block; }
+
+  /* =========================================
+     MODO HORIZONTAL (LANDSCAPE) - 2 COLUNAS
+     ========================================= */
+  @media (orientation: landscape) and (min-width: 600px) {
+    body { padding: calc(env(safe-area-inset-top) + 6px) 14px calc(env(safe-area-inset-bottom) + 66px); }
+    
+    /* Cria a grelha de 2 colunas para o conteúdo principal */
+    .main-layout {
+      display: grid;
+      grid-template-columns: 1fr 1.2fr; /* Esquerda: Velocímetro | Direita: Cartões e Tempos */
+      gap: 16px;
+      align-items: start;
+    }
+
+    .speed-container { margin: 0; height: 100%; align-items: center; }
+    .speed-ring { width: 260px; height: 260px; }
+    .speed-val { font-size: 90px; }
+    
+    .grid-2 { margin-bottom: 10px; }
+    .time-row { margin-bottom: 12px; }
+    
+    /* O resumo e ações ficam na coluna da direita */
+    .right-column { display: flex; flex-direction: column; gap: 10px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ECRÃ DE ENTRADA -->
+<div id="startScreen">
+  <div class="card" style="max-width: 400px; margin: 10vh auto 0; text-align: center;">
+    <div class="brand" style="justify-content: center; font-size: 24px; margin-bottom: 4px;"><span>🚚</span> Tacógrafo Pro</div>
+    <div style="font-size: 11px; color: var(--muted); margin-bottom: 20px;">PAINEL DE CONTROLO E REGISTO</div>
+    
+    <div style="text-align: left; margin-bottom: 12px;">
+      <label style="font-size: 11px; color: var(--muted); font-weight: 700;">CONDUTOR</label>
+      <select id="userSelect" style="width:100%; background:var(--panel-2); color:white; border:1px solid var(--line); border-radius:8px; padding:12px; font-size:14px; margin-top:4px;"></select>
+    </div>
+    <div style="text-align: left; margin-bottom: 12px;">
+      <label style="font-size: 11px; color: var(--muted); font-weight: 700;">MATRÍCULA</label>
+      <input id="sPlate" placeholder="AA-00-AA" style="width:100%; background:var(--panel-2); color:white; border:1px solid var(--line); border-radius:8px; padding:12px; font-size:14px; margin-top:4px; text-transform:uppercase;">
+    </div>
+    <div style="text-align: left; margin-bottom: 20px;">
+      <label style="font-size: 11px; color: var(--muted); font-weight: 700;">ODO INICIAL (KM)</label>
+      <input id="sOdo" type="number" placeholder="Ex: 450000" style="width:100%; background:var(--panel-2); color:white; border:1px solid var(--line); border-radius:8px; padding:12px; font-size:14px; margin-top:4px;">
+    </div>
+    
+    <button class="btn" style="background: var(--green); color: white; width: 100%; font-size: 15px; margin-bottom: 10px;" id="btnStart">▶ Iniciar Jornada</button>
+    <button class="btn dark" style="width: 100%;" onclick="openReportsModal()">📊 Consultar Relatórios</button>
+  </div>
+</div>
+
+<!-- APP PRINCIPAL -->
+<div id="app" class="hidden">
+  <div class="tab active" id="tab-hoje">
+    
+    <!-- HEADER -->
+    <div class="topbar">
+      <div>
+        <div class="brand"><span>🚚</span> Tacógrafo Pro</div>
+        <div style="display: flex; align-items: center; gap: 6px; margin-top: 4px;">
+          <div class="status-pill" id="statusPill">● Em curso</div>
+          <div style="font-size: 10px; color: var(--muted);" id="driverDisplay">---</div>
+        </div>
+      </div>
+      <div>
+        <div class="clock-header" id="clockTime">00:00</div>
+        <div class="date-header" id="dateDisplay">---</div>
+      </div>
+    </div>
+
+    <!-- LAYOUT PRINCIPAL (Muda de 1 para 2 colunas via CSS) -->
+    <div class="main-layout">
+      
+      <!-- COLUNA ESQUERDA: VELOCÍMETRO -->
+      <div class="speed-container">
+        <div class="speed-ring" id="speedRing">
+          <div class="speed-inner">
+            <div class="speed-val num" id="gpsSpeed">0</div>
+            <div class="speed-unit">km/h</div>
+            <div class="limit-badge">90</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- COLUNA DIREITA: CARTÕES E TEMPOS -->
+      <div class="right-column">
+        
+        <!-- ODO E KM -->
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-title">ODO</div>
+            <div class="card-val num" id="odoDisplay">0</div>
+            <div class="card-sub">km totais</div>
+          </div>
+          <div class="card">
+            <div class="card-title">Km de Hoje</div>
+            <div class="card-val num" id="kmCalculated">0</div>
+            <div class="card-sub">nesta sessão</div>
+          </div>
+        </div>
+
+        <!-- TEMPOS E BARRAS -->
+        <div class="card">
+          <div class="time-row">
+            <div class="icon-box drive">🚗</div>
+            <div class="time-info">
+              <div class="time-header"><span>Tempo de condução</span> <span class="num" id="contSub">0h00</span></div>
+              <div style="display: flex; justify-content: space-between; align-items: baseline;">
+                <div class="time-val num" id="contTimer">4:30:00</div>
+                <div class="time-val limit num">/ 4:30</div>
+              </div>
+              <div class="progress-bg"><div class="progress-fill fill-drive" id="barDrive"></div></div>
+            </div>
+          </div>
+
+          <div class="time-row">
+            <div class="icon-box pause">☕</div>
+            <div class="time-info">
+              <div class="time-header"><span>Pausa necessária</span></div>
+              <div style="display: flex; justify-content: space-between; align-items: baseline;">
+                <div class="time-val num" id="pauseTimer">0:45:00</div>
+                <div class="time-val limit num">(45 min)</div>
+              </div>
+              <div class="progress-bg"><div class="progress-fill fill-pause" id="barPause"></div></div>
+            </div>
+          </div>
+
+          <div class="time-row">
+            <div class="icon-box rest">🛏️</div>
+            <div class="time-info">
+              <div class="time-header"><span>Descanso diário</span> <span class="num" id="dailySub">0h00</span></div>
+              <div style="display: flex; justify-content: space-between; align-items: baseline;">
+                <div class="time-val num" id="dailyTimer">11:00</div>
+                <div class="time-val limit num">/ 11:00</div>
+              </div>
+              <div class="progress-bg"><div class="progress-fill fill-rest" id="barRest"></div></div>
+            </div>
+          </div>
+        </div>
+
+      </div> <!-- Fim right-column -->
+    </div> <!-- Fim main-layout -->
+
+    <!-- RESUMO DO DIA (Fica por baixo de tudo) -->
+    <div class="summary-grid" style="margin-top: 12px;">
+      <div class="summary-item">
+        <div class="summary-icon" style="color: var(--amber);">🚗</div>
+        <div class="summary-val num" id="sumDrive">0h00</div>
+        <div class="summary-label">Condução</div>
+      </div>
+      <div class="summary-item">
+        <div class="summary-icon" style="color: var(--blue);">🔧</div>
+        <div class="summary-val num" id="sumWork">0h00</div>
+        <div class="summary-label">Trabalho</div>
+      </div>
+      <div class="summary-item">
+        <div class="summary-icon" style="color: var(--muted);">⏱️</div>
+        <div class="summary-val num" id="sumAvail">0h00</div>
+        <div class="summary-label">Disponib.</div>
+      </div>
+      <div class="summary-item">
+        <div class="summary-icon" style="color: var(--green);">🛏️</div>
+        <div class="summary-val num" id="sumRest">0h00</div>
+        <div class="summary-label">Descanso</div>
+      </div>
+    </div>
+
+    <!-- BOTÕES -->
+    <div class="actions">
+      <button class="btn red" id="btnEndDay">Ejetar Cartão</button>
+      <button class="btn dark" onclick="openWeeklyModal()">📅 Semanal / Bi</button>
+    </div>
+
+    <div style="display: flex; gap: 6px; margin-top: 8px;">
+      <button class="btn dark" style="flex:1; font-size:11px;" onclick="setActivity('R')">Pausa Rápida</button>
+      <button class="btn dark" style="flex:1; font-size:11px;" onclick="setActivity('C')">Iniciar Repouso</button>
+      <button class="btn dark" style="flex:1; font-size:11px;" onclick="openReportsModal()">PDF</button>
+    </div>
+
+  </div>
+
+  <!-- ABA DEFINIÇÕES -->
+  <div class="tab" id="tab-definicoes">
+    <div class="card">
+      <h2 style="font-size: 18px; margin-top:0;">Definições</h2>
+      
+      <div style="display:flex; justify-content:space-between; align-items:center; padding: 12px 0; border-bottom: 1px solid var(--line);">
+        <span style="font-size:13px; font-weight:600;">Alertas Sonoros</span>
+        <input type="checkbox" id="toggleSound" onchange="saveSettings()" style="width:20px; height:20px; accent-color: var(--blue);">
+      </div>
+      <div style="display:flex; justify-content:space-between; align-items:center; padding: 12px 0; border-bottom: 1px solid var(--line);">
+        <span style="font-size:13px; font-weight:600;">Alertas Visuais (Ecrã)</span>
+        <input type="checkbox" id="toggleVisual" onchange="saveSettings()" style="width:20px; height:20px; accent-color: var(--blue);">
+      </div>
+
+      <button class="btn dark" style="width:100%; margin-top: 15px; border-color: var(--amber); color: var(--amber);" onclick="startNewWeek()">🔄 Iniciar Nova Semana</button>
+      <p style="font-size:10px; color:var(--muted); text-align:center; margin-top:8px;">Reinicia os cálculos semanais (56h) e bisemanais (90h).</p>
+
+      <button class="btn dark" style="width:100%; margin-top: 12px;" onclick="editOdo()">✏️ Atualizar ODO Real</button>
+    </div>
+  </div>
+
+  <!-- NAV BAR -->
+  <nav class="nav">
+    <button class="active" onclick="switchTab('hoje', this)"><span>🏠</span>Hoje</button>
+    <button onclick="openReportsModal()"><span>📄</span>Relatórios</button>
+    <button onclick="switchTab('definicoes', this)"><span>⚙️</span>Definições</button>
+  </nav>
+</div>
+
+<!-- MODAL RELATÓRIOS -->
+<div id="reportsModal" class="modal hidden">
+  <div class="modal-box">
+    <h2 style="margin-top:0; font-size:18px;">Relatórios de Atividade</h2>
+    <div id="historyContent" style="margin-bottom: 15px;"></div>
+    <button class="btn" style="background:var(--green); color:white; width:100%; margin-bottom:8px;" onclick="generatePDF()">Exportar PDF Oficial</button>
+    <button class="btn dark" style="width:100%;" onclick="document.getElementById('reportsModal').classList.add('hidden')">Fechar</button>
+  </div>
+</div>
+
+<!-- MODAL SEMANAL -->
+<div id="weeklyModal" class="modal hidden">
+  <div class="modal-box">
+    <h2 style="margin-top:0; font-size:18px;">Acumulados Semanais</h2>
+    <div id="weeklyContent" style="margin-bottom: 15px;"></div>
+    <button class="btn dark" style="width:100%;" onclick="document.getElementById('weeklyModal').classList.add('hidden')">Fechar</button>
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+const KEY="tacho_v8_ui";
+const MS=60000, H=60*MS, DAY=24*H;
+const LIMIT_CONT=270*MS, LIMIT_DAILY=9*H, LIMIT_WEEK=56*H, LIMIT_BIWEEK=90*H;
+
+let db={users:["Jonatan (Principal)","Motorista 2"],userStates:{},history:[],settings:{sound:true,visual:true,speedLimit:90},weekResetTime:0};
+try{const x=JSON.parse(localStorage.getItem(KEY)||"null");if(x)db={...db,...x,settings:{sound:true,visual:true,speedLimit:90,...(x.settings||{})}}}catch(e){}
+if(!Array.isArray(db.users)||!db.users.length)db.users=["Condutor 1"];
+if(!db.userStates)db.userStates={};
+if(!Array.isArray(db.history))db.history=[];
+
+let activeUser="",lastCoords=null,wakeLock=null,audioCtx=null,speedNow=null,overSpeedSeconds=0,lastSpeedTime=0;
+let lastWarnCont=0, lastWarnDaily=0;
+
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+function save(){try{localStorage.setItem(KEY,JSON.stringify(db))}catch(e){}}
+function state(){return activeUser?db.userStates[activeUser]:null}
+function current(){const s=state();return s&&s.current}
+function segments(){return current()?.segs||[]}
+function currentAct(){const a=segments();return a.length?a[a.length-1][0]:null}
+function fmtHM(ms){let m=Math.max(0,Math.floor(ms/MS));return Math.floor(m/60)+"h"+String(m%60).padStart(2,"0")}
+function fmtHMS(ms){let s=Math.max(0,Math.floor(ms/1000));return Math.floor(s/3600)+":"+String(Math.floor(s%3600/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0")}
+function segEnd(s,now){return s[2]??now}
+
+function weekStart(t){const d=new Date(t);d.setHours(0,0,0,0);const day=(d.getDay()+6)%7;d.setDate(d.getDate()-day);return d.getTime()}
+
+function initAudio(){
+  try{ audioCtx ||= new (window.AudioContext||window.webkitAudioContext)(); if(audioCtx.state==="suspended")audioCtx.resume(); }catch(e){}
+}
+function playBip(freq=650,duration=.15){
+  if(!db.settings.sound)return;
+  try{
+    initAudio();
+    const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+    o.frequency.value=freq;g.gain.value=.1;
+    o.connect(g);g.connect(audioCtx.destination);
+    o.start();o.stop(audioCtx.currentTime+duration)
+  }catch(e){}
+}
+
+async function requestWakeLock(){try{if("wakeLock"in navigator&&!wakeLock)wakeLock=await navigator.wakeLock.request("screen")}catch(e){}}
+
+function initUsers(){
+  const sel=$("userSelect");sel.innerHTML="";
+  db.users.forEach(u=>{const o=document.createElement("option");o.value=u;o.textContent=u;sel.append(o)});
+  $("toggleSound").checked=!!db.settings.sound;
+  $("toggleVisual").checked=!!db.settings.visual;
+}
+
+window.switchTab=function(id,btn){
+  document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));$("tab-"+id).classList.add("active");
+  document.querySelectorAll(".nav button").forEach(x=>x.classList.remove("active"));btn.classList.add("active");
+};
+
+window.saveSettings=function(){
+  db.settings.sound=$("toggleSound").checked;
+  db.settings.visual=$("toggleVisual").checked;
+  save();
+};
+
+window.startNewWeek=function(){
+  if(confirm("Iniciar nova semana? Os cálculos de 7 e 14 dias começarão a contar a partir de agora.")) {
+    db.weekResetTime=Date.now(); save(); alert("Nova semana iniciada!");
+  }
+};
+
+window.setActivity=function(key){
+  const c=current();if(!c){alert("Entra no painel primeiro.");return}
+  const a=c.segs,now=Date.now();
+  if(a.length&&a[a.length-1][0]===key&&a[a.length-1][2]==null)return;
+  if(a.length&&a[a.length-1][2]==null)a[a.length-1][2]=now;
+  a.push([key,now,null]);
+  save();render()
+};
+
+function getDistanceKm(a,b,c,d){const r=6371,dl=(c-a)*Math.PI/180,dn=(d-b)*Math.PI/180,x=Math.sin(dl/2)**2+Math.cos(a*Math.PI/180)*Math.cos(c*Math.PI/180)*Math.sin(dn/2)**2;return 2*r*Math.atan2(Math.sqrt(x),Math.sqrt(1-x))}
+
+function initGPS(){
+  if(!navigator.geolocation)return;
+  navigator.geolocation.watchPosition(pos=>{
+    const now=Date.now();
+    speedNow=pos.coords.speed==null?null:Math.max(0,pos.coords.speed*3.6);
+    $("gpsSpeed").textContent=speedNow===null?"0":Math.round(speedNow);
+    
+    // Atualiza o anel de velocidade
+    const speedRing = $("speedRing");
+    const maxSpeed = 120; 
+    const pct = Math.min(100, (speedNow / maxSpeed) * 100);
+    const color = speedNow > 90 ? 'var(--red)' : 'var(--green)';
+    speedRing.style.background = `conic-gradient(${color} ${pct}%, var(--panel-2) ${pct}%, var(--panel-2) 100%)`;
+
+    const c=current();
+    if(c&&lastCoords){
+      const dist=getDistanceKm(lastCoords.latitude,lastCoords.longitude,pos.coords.latitude,pos.coords.longitude);
+      if(dist<.25&&dist>0&&pos.coords.accuracy<60){c.gpsKm=(c.gpsKm||0)+dist;c.lastGpsTime=now;save()}
+    }
+    lastCoords=pos.coords;
+    
+    const lim=Number(db.settings.speedLimit)||90;
+    if(speedNow!==null&&speedNow>lim){
+      if(!lastSpeedTime)lastSpeedTime=now;
+      overSpeedSeconds+=Math.max(0,Math.min(5,(now-lastSpeedTime)/1000));
+      if(db.settings.visual)document.body.classList.add("flash-red");
+      if(now-lastSpeedTime>2500)playBip(900,.1);
+    }else{
+      lastSpeedTime=now;
+      document.body.classList.remove("flash-red");
+    }
+    render();
+  },err=>{}, {enableHighAccuracy:true,maximumAge:1500,timeout:12000})
+}
+
+function render(){
+  const c=current();if(!c)return;
+  const now=Date.now();
+  let drive=0,work=0,avail=0,rest=0,cont=0;
+  let run=0;
+
+  c.segs.forEach(s=>{
+    const dur=Math.max(0,segEnd(s,now)-s[1]);
+    if(s[0]==="D"){drive+=dur;work+=dur;run+=dur}
+    if(["T","L"].includes(s[0]))work+=dur;
+    if(s[0]==="A")avail+=dur;
+    if(["R","C","F"].includes(s[0]))rest+=dur;
+    if(["R","C"].includes(s[0])&&dur>=45*MS) run=0;
+  });
+  cont=run;
+
+  const odo=Number(c.odoStart||0)+(c.gpsKm||0);
+  
+  $("odoDisplay").textContent=Math.round(odo).toLocaleString("pt-PT");
+  $("kmCalculated").textContent=Math.round(c.gpsKm||0).toLocaleString("pt-PT");
+  
+  $("contTimer").textContent=fmtHMS(Math.max(0,LIMIT_CONT-cont));
+  $("dailyTimer").textContent=fmtHM(Math.max(0,LIMIT_DAILY-drive));
+  $("contSub").textContent=fmtHM(cont);
+  $("dailySub").textContent=fmtHM(drive);
+
+  $("sumDrive").textContent=fmtHM(drive);
+  $("sumWork").textContent=fmtHM(work);
+  $("sumAvail").textContent=fmtHM(avail);
+  $("sumRest").textContent=fmtHM(rest);
+
+  const pctDrive = Math.min(100, (cont / LIMIT_CONT) * 100);
+  const pctDaily = Math.min(100, (drive / LIMIT_DAILY) * 100);
+  $("barDrive").style.width = pctDrive + "%";
+  $("barRest").style.width = pctDaily + "%";
+
+  // Alerta Luminoso
+  const elapsedCont = cont;
+  const limContAlert = 250 * MS;
+  if(elapsedCont >= limContAlert && elapsedCont <= limContAlert + (2 * MS)) {
+    if(db.settings.visual) document.body.classList.add("flash-yellow");
+    if(now - lastWarnCont > 3000) { playBip(650, .2); lastWarnCont = now; }
+  } 
+  else if(drive >= 525 * MS && drive <= 527 * MS) {
+    if(db.settings.visual) document.body.classList.add("flash-yellow");
+    if(now - lastWarnDaily > 3000) { playBip(650, .2); lastWarnDaily = now; }
+  } 
+  else if(!document.body.classList.contains("flash-red")) {
+    document.body.classList.remove("flash-yellow");
+  }
+
+  // Data e Hora
+  const d = new Date();
+  $("clockTime").textContent = d.toLocaleTimeString("pt-PT", {hour:'2-digit', minute:'2-digit'});
+  $("dateDisplay").textContent = d.toLocaleDateString("pt-PT", {weekday:'short', day:'numeric', month:'short'});
+}
+
+function begin(){
+  activeUser=$("userSelect").value;
+  const plate=$("sPlate").value.trim().toUpperCase()||"S/MATRICULA",odo=Number($("sOdo").value);
+  if(!Number.isFinite(odo)||odo<0){alert("Introduz uma leitura inicial de ODO válida.");return}
+  if(!db.userStates[activeUser])db.userStates[activeUser]={};
+  if(db.userStates[activeUser].current){
+    if(!confirm("Já existe uma sessão aberta. Reabrir?"))return
+  }else{
+    const now=Date.now();
+    db.userStates[activeUser].current={start:now,plate,odoStart:odo,gpsKm:0,segs:[["T",now,null]],overSpeed:0};
+  }
+  save();requestWakeLock();initAudio();playBip(850,.08);
+  $("driverDisplay").textContent=activeUser;
+  $("startScreen").classList.add("hidden");$("app").classList.remove("hidden");
+  render();
+}
+
+$("btnStart").addEventListener("click",begin);
+$("btnEndDay").addEventListener("click",()=>{
+  const c=current();if(!c)return;
+  if(!confirm("Terminar a sessão e guardar o registo?"))return;
+  const now=Date.now();
+  if(c.segs.length&&c.segs[c.segs.length-1][2]==null)c.segs[c.segs.length-1][2]=now;
+  c.end=now;c.lastActivity=c.segs[c.segs.length-1]?.[0];
+  db.history.push({user:activeUser,...c});
+  db.userStates[activeUser].lastLogoutTime=now;
+  db.userStates[activeUser].current=null;
+  save();location.reload()
+});
+
+window.openWeeklyModal=function(){
+  const now=Date.now(),c=current();let w=0,b=0;
+  const startWeek = db.weekResetTime > 0 ? db.weekResetTime : weekStart(now);
+  const startBiweek = startWeek - 7*DAY;
+  
+  function count(h){
+    (h.segs||[]).forEach(s=>{
+      if(s[0]!=="D")return;
+      const a=s[1],e=segEnd(s,h.end||now);
+      w+=Math.max(0,Math.min(e,now)-Math.max(a,startWeek));
+      b+=Math.max(0,Math.min(e,now)-Math.max(a,startBiweek));
+    })
+  }
+  db.history.filter(h=>h.user===activeUser).forEach(count);
+  if(c)count(c);
+  
+  $("weeklyContent").innerHTML=`
+    <div class="history-item"><b>Semana atual</b><br>Condução registada: <b>${fmtHM(w)}</b><br>Referência de 56h: ${fmtHM(Math.max(0,LIMIT_WEEK-w))} restante</div>
+    <div class="history-item"><b>Duas semanas consecutivas</b><br>Condução registada: <b>${fmtHM(b)}</b><br>Referência de 90h: ${fmtHM(Math.max(0,LIMIT_BIWEEK-b))} restante</div>
+  `;
+  $("weeklyModal").classList.remove("hidden")
+};
+
+window.openReportsModal=function(){
+  const el=$("historyContent");const list=db.history.slice().reverse();
+  el.innerHTML=list.length?list.map(h=>`<div class="history-item"><b>${esc(h.user)}</b> · ${new Date(h.start).toLocaleString("pt-PT")}<br>Viatura: ${esc(h.plate)} · ODO inicial: ${Number(h.odoStart||0).toLocaleString("pt-PT")} km<br>Distância GPS: ${(h.gpsKm||0).toFixed(1)} km · duração: ${fmtHM((h.end||Date.now())-h.start)}</div>`).join(""):'<p style="color:var(--muted);text-align:center;">Ainda não existem sessões terminadas.</p>';
+  $("reportsModal").classList.remove("hidden")
+};
+
+window.generatePDF=function(){
+  if(!window.jspdf?.jsPDF){alert("A biblioteca PDF não está disponível.");return}
+  const {jsPDF}=window.jspdf,doc=new jsPDF();
+  doc.setFontSize(17);doc.text("Tacógrafo Pro — Relatório",14,18);
+  doc.setFontSize(10);doc.text("Emitido: "+new Date().toLocaleString("pt-PT"),14,26);
+  let y=36;
+  db.history.slice(-25).reverse().forEach(h=>{
+    if(y>275){doc.addPage();y=18}
+    const line=`${new Date(h.start).toLocaleDateString("pt-PT")} | ${h.user} | ${h.plate} | GPS ${(h.gpsKm||0).toFixed(1)} km`;
+    doc.text(line.slice(0,110),14,y);y+=7
+  });
+  doc.save("TacografoPro-relatorio.pdf")
+};
+
+window.editOdo=function(){
+  const c=current();if(!c){alert("Inicia uma sessão primeiro.");return}
+  const n=prompt("Introduz a leitura real atual do ODO (km):",String(Math.round(Number(c.odoStart||0)+Number(c.gpsKm||0))));
+  if(n===null)return;const v=Number(n);
+  if(!Number.isFinite(v)||v<0){alert("Leitura inválida.");return}
+  c.odoStart=v;c.gpsKm=0;save();render()
+};
+
+document.addEventListener("visibilitychange",()=>{
+  if(document.visibilityState==="visible"){requestWakeLock();if(current())render()}
+});
+
+setInterval(()=>{
+  if(current())render();
+},1000);
+
+initUsers();initGPS();
+})();
+</script>
+</body>
+</html>
